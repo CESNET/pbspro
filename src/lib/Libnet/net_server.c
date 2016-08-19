@@ -218,6 +218,10 @@ connection_init(void)
 		svr_conn[i].cn_username[0] = '\0';
 		svr_conn[i].cn_hostname[0] = '\0';
 		svr_conn[i].cn_data = (void *)0;
+#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
+		svr_conn[i].cn_principal = NULL;
+		svr_conn[i].cn_physhost[0] = '\0';
+#endif
 	}
 	return (0);
 
@@ -716,6 +720,8 @@ close_conn(int sd)
 #endif
 		return;
 
+	DIS_tcp_release(sd);
+
 	conn_idx = connection_find_actual_index(sd);
 	if (conn_idx == -1)
 		return;
@@ -779,6 +785,12 @@ cleanup_conn(int cndx)
 	svr_conn[cndx].cn_username[0] = '\0';
 	svr_conn[cndx].cn_hostname[0] = '\0';
 	svr_conn[cndx].cn_data = (void *)0;
+	
+#if defined(PBS_SECURITY) && (PBS_SECURITY == KRB5)
+	svr_conn[cndx].cn_physhost[0] = '\0';
+	free(svr_conn[cndx].cn_principal);
+	svr_conn[cndx].cn_principal = NULL;
+#endif
 }
 
 /**

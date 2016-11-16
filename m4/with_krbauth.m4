@@ -63,10 +63,21 @@ AC_DEFUN([KRB5_CONFIG],
   _KRB5_CONFIG_CFLAGS([$PATH_KRB5_CONFIG],[],[_KRB5])
   _KRB5_CONFIG_LIBS([$PATH_KRB5_CONFIG],[krb5],[_KRB5_KRB5])
   _KRB5_CONFIG_LIBS([$PATH_KRB5_CONFIG],[gssapi],[_KRB5_GSSAPI])
+  _KRB5_CONFIG_LIBS([$PATH_KRB5_CONFIG],[kafs],[_KRB5_KAFS])
 
   AC_SUBST([KRB5_CFLAGS],[$_KRB5_CFLAGS])
-  _KRB5_LIBS="$_KRB5_KRB5_LIBS $_KRB5_GSSAPI_LIBS -lcom_err -lkrb525 -lkafs"
+  _KRB5_LIBS="$_KRB5_KRB5_LIBS $_KRB5_GSSAPI_LIBS $_KRB5_KAFS_LIBS -lcom_err"
   AC_SUBST([KRB5_LIBS],[$_KRB5_LIBS])
+])
+
+AC_DEFUN([KRB525_CONFIG],
+[
+  AS_IF([test "x$with_krb525" != "x"],
+    [krb525_inc="-I$with_krb525" krb525_lib="-L$with_krb525"],
+    []
+  )
+  AC_SUBST([KRB525_CFLAGS],["$krb525_inc"])
+  AC_SUBST([KRB525_LIBS],["$krb525_lib -lkrb525"])
 ])
 
 AC_DEFUN([PBS_AC_WITH_KRBAUTH],
@@ -76,12 +87,18 @@ AC_DEFUN([PBS_AC_WITH_KRBAUTH],
     [AS_HELP_STRING([--with-krbauth],
        [enable kerberos authentication, krb5-config required for setup])],
     [],[with_krbauth=no])
+  AC_ARG_WITH([krb525],
+    AS_HELP_STRING([--with-krb525=DIR],
+      [Specify the directory where the krb525 library is installed.]
+    )
+  )
 
   AS_IF([test "x$with_krbauth" != xno],
     [
     AC_MSG_RESULT([requested])
     _KRB5_CONFIG_PATH
     KRB5_CONFIG
+    KRB525_CONFIG
     AC_DEFINE_UNQUOTED([PBS_SECURITY],[KRB5],[Enable krb5/gssapi security.])
     ],
     [

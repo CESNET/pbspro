@@ -44,7 +44,8 @@ pbs_mom_CPPFLAGS = \
 	@hwloc_flags@ \
 	@hwloc_inc@ \
 	@PYTHON_INCLUDES@ \
-	@KRB5_CFLAGS@
+	@KRB5_CFLAGS@ \
+	@KRB525_CFLAGS@
 
 pbs_mom_LDADD = \
 	$(top_builddir)/src/lib/Libattr/libattr.a \
@@ -61,7 +62,8 @@ pbs_mom_LDADD = \
 	@mom_mach_libs@ \
 	-lssl \
 	-lcrypto \
-	@KRB5_LIBS@
+	@KRB5_LIBS@ \
+	@KRB525_LIBS@
 
 pbs_mom_SOURCES = \
 	$(top_builddir)/src/server/job_attr_def.c \

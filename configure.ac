@@ -388,6 +388,7 @@ AC_CONFIG_FILES([
 	src/lib/Makefile
 	src/modules/Makefile
 	src/modules/python/Makefile
+	src/momctl/Makefile
 	src/mom_rcp/Makefile
 	src/resmom/Makefile
 	src/scheduler/Makefile

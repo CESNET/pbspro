@@ -45,6 +45,7 @@ SUBDIRS = \
 	server \
 	scheduler \
 	modules \
+	momctl \
 	resmom \
 	mom_rcp \
 	iff \

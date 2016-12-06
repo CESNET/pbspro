@@ -364,7 +364,7 @@ start_pbs() {
 			fi
 			check_maxsys
 
-			if  ${PBS_EXEC}/sbin/pbs_mom
+			if  ${PBS_EXEC}/sbin/pbs_mom -p
 			then
 				echo "PBS mom"
 			else

@@ -49,7 +49,7 @@ extern "C" {
 /*
  *	query_job - takes info from a batch_status about a job and puts
  */
-resource_resv *query_job(struct batch_status *job, server_info *sinfo, schd_error *err);
+resource_resv *query_job(struct batch_status *job, server_info *sinfo, queue_info *qinfo, schd_error *err);
 
 /*
  * pthread routine for querying a chunk of jobs

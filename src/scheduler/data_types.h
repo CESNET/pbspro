@@ -94,6 +94,7 @@ struct resdef;
 struct event_list;
 struct status;
 struct fairshare_head;
+struct fairshare_trees;
 struct node_scratch;
 struct te_list;
 struct node_bucket;
@@ -129,6 +130,7 @@ typedef struct timed_event timed_event;
 typedef struct event_list event_list;
 typedef struct status status;
 typedef struct fairshare_head fairshare_head;
+typedef struct fairshare_trees fairshare_trees;
 typedef struct node_scratch node_scratch;
 typedef struct resresv_set resresv_set;
 typedef struct te_list te_list;
@@ -472,7 +474,7 @@ struct server_info
 	 * the policy struct.  The policy struct will be passed around separately
 	 */
 	status *policy;
-	fairshare_head *fairshare;	/* root of fairshare tree */
+	fairshare_trees *fairshares;	/* fairshare trees */
 	resresv_set **equiv_classes;
 	node_bucket **buckets;		/* node bucket array */
 	node_info **unordered_nodes;
@@ -541,6 +543,7 @@ struct queue_info
 	int num_topjobs;		/* current number of top jobs in this queue */
 	int backfill_depth;		/* total allowable topjobs in this queue*/
 	char *partition;		/* partition to which queue belongs to */
+	char *fairshare_tree;   /* name of fairshare tree*/
 };
 
 struct job_info
@@ -914,6 +917,14 @@ struct fairshare_head
 	time_t last_decay;			/* last time tree was decayed */
 };
 
+/* fairshare heads structure */
+struct fairshare_trees
+{
+	char *name;                             /* name of the tree */
+	fairshare_head *fairshare;              /* fairshare head structure */
+	struct fairshare_trees *next;
+};
+
 /* a path from the root to a group_info in the tree */
 struct group_path
 {
@@ -1150,6 +1161,7 @@ struct config
 						 */
 	time_t nonprime_spill;			/* vice versa for prime_spill */
 	fairshare_head *fairshare;		/* fairshare tree */
+	fairshare_trees *fairshares;		/* fairshare trees */
 	time_t decay_time;			/*  time in seconds for the decay period*/
 	struct t prime[HIGH_DAY][HIGH_PRIME];	/* prime time start and prime time end*/
 	int holidays[MAX_HOLIDAY_SIZE];		/* holidays in Julian date */

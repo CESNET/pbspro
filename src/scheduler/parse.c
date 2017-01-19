@@ -849,7 +849,7 @@ init_config()
 {
 	static char *ignore[] = { "mpiprocs", "ompthreads", NULL };
 
-	free_fairshare_head(conf.fairshare);
+	free_fairshares(conf.fairshares);
 	free_sort_info(PRIME_SORT);
 	free_sort_info(NON_PRIME_SORT);
 	free_sort_info(PRIME_NODE_SORT);

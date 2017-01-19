@@ -252,6 +252,7 @@ extern "C" {
 #define ATTR_count	"state_count"
 #define ATTR_number	"number_jobs"
 #define ATTR_jobscript_max_size "jobscript_max_size"
+#define ATTR_fairshare_tree "fairshare_tree"
 #ifdef NAS
 /* localmod 046 */
 #define	ATTR_maxstarve	"max_starve"

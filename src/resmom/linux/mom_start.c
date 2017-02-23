@@ -725,8 +725,8 @@ scan_for_terminated(void)
 		DBPRT(("%s: task %8.8X pid %d exit value %d\n", __func__,
 		       ptask->ti_qs.ti_task, pid, exiteval))
 		ptask->ti_qs.ti_exitstat = exiteval;
-		sprintf(log_buffer, "task %8.8X terminated",
-			ptask->ti_qs.ti_task);
+		sprintf(log_buffer, "task %8.8X terminated pid %d exit value %d",
+			ptask->ti_qs.ti_task, pid, exiteval);
 		log_event(PBSEVENT_DEBUG, PBS_EVENTCLASS_JOB, LOG_DEBUG,
 			  pjob->ji_qs.ji_jobid, log_buffer);
 

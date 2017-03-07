@@ -8803,7 +8803,7 @@ main(int argc, char *argv[])
 
 	/* if kill_jobs_on_exit set, kill any running/suspended jobs */
 
-	if (kill_jobs_on_exit) {
+	if (kill_jobs_on_exit && recover != 2) {
 		pjob = (job *)GET_NEXT(svr_alljobs);
 		while (pjob) {
 			if (check_job_substate(pjob, JOB_SUBSTATE_RUNNING)
@@ -9182,7 +9182,7 @@ PbsMomHandler(DWORD dwControl)
 
 /**
  * @brief
- *	signal handler for SIGQUIT
+ *	signal handler for SIGUSR1
  *	quit only if no multinode jobs on node
  *	do not kill jobs on exit
  *

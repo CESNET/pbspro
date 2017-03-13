@@ -8776,6 +8776,22 @@ main(int argc, char *argv[])
 						  PBS_EVENTCLASS_JOB, LOG_INFO,
 						  pjob->ji_qs.ji_jobid, log_buffer);
 
+					kill_msg = malloc(80 + strlen(log_buffer) + \
+							strlen(pjob->ji_qs.ji_jobid) + \
+							strlen(pjob->ji_wattr[(int)JOB_ATR_job_owner].at_val.at_str) + \
+							strlen(mom_host) + \
+							strlen(pjob->ji_wattr[(int)JOB_ATR_jobname].at_val.at_str));
+					if (kill_msg != NULL) {
+						sprintf(kill_msg, "%s %s %s %s name: %s",
+							pjob->ji_qs.ji_jobid,
+							pjob->ji_wattr[(int)JOB_ATR_job_owner].at_val.at_str,
+							mom_host,
+							log_buffer,
+							pjob->ji_wattr[(int)JOB_ATR_jobname].at_val.at_str);
+						log_err(0, "RESOURCE_KILL", kill_msg);
+						free(kill_msg);
+					}
+
 					kill_msg = malloc(80 + strlen(log_buffer));
 					if (kill_msg != NULL) {
 						sprintf(kill_msg, "=>> PBS: job killed: %s\n", log_buffer);

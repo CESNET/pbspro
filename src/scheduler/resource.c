@@ -585,6 +585,12 @@ reset_global_resource_ptrs(void)
 		free_resdef_array(allres);
 		allres = NULL;
 	}
+
+	if (allstrres) {
+		free_resource_list(allstrres);
+		allstrres = NULL;
+	}
+	
 	clear_limres();
 }
 

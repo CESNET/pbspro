@@ -193,6 +193,7 @@ char           *mom_home;
 char		mom_host[PBS_MAXHOSTNAME+1];
 pid_t		mom_pid;
 int		mom_run_state = 1;
+#define SAFE_STOP
 int		mom_safe_stop = 0;
 char		mom_short_name[PBS_MAXHOSTNAME+1];
 int		next_sample_time = MAX_CHECK_POLL_TIME;
@@ -9211,10 +9212,6 @@ PbsMomHandler(DWORD dwControl)
 void
 safe_stop(int sig)
 {
-	sprintf(log_buffer, "caught signal %d", sig);
-	log_event(PBSEVENT_SYSTEM | PBSEVENT_FORCE, PBS_EVENTCLASS_SERVER,
-		LOG_NOTICE, msg_daemonname, log_buffer);
-
         switch (sig) {
 		case SIGUSR1:
 			mom_run_state = 0;

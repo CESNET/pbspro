@@ -62,6 +62,10 @@ isalnumspch(int c)
 	if (c == '-' || c == '_' || c == '+' || c == '.')
 		return c;
 
+	/* MetaCentrum RT#336929 */
+	if (c == '#' || c == ',' || c == ':' || c == '=' || c == '@' || c == '^')
+		return c;
+
 	return 0;
 }
 

@@ -2704,7 +2704,9 @@ create_pbs_node2(char *objname, svrattrl *plist, int perms, int *bad, struct pbs
 	struct pbsnode	*pnode;
 	struct pbsnode **tmpndlist;
 	int		ntype;		/* node type, always PBS */
+#if 0
 	char		*pc;
+#endif
 	char		*phost;		/* trial host name */
 	char		*pname;		/* node name w/o any :ts       */
 	u_long		*pul = NULL;	/* 0 terminated host adrs array*/

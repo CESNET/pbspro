@@ -135,6 +135,12 @@ find_attr(struct attribute_def *attr_def, char *name, int limit)
 
 	if (attr_def) {
 		for (index = 0; index < limit; index++) {
+			if (!strcasecmp(name, "Job_Host") && !strcasecmp(attr_def->at_name, "Submit_Host")) 
+				return (index);
+
+			if (!strcasecmp(name, "krb_princ") && !strcasecmp(attr_def->at_name, "credential_id")) 
+				return (index);
+
 			if (!strcasecmp(attr_def->at_name, name))
 				return (index);
 			attr_def++;

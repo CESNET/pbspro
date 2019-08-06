@@ -1010,6 +1010,8 @@ pbs_python_setup_job_class_attributes(void)
 	int num_entry =  JOB_ATR_LAST+1; /* 1 for sentinel */
 	int te;
 
+	num_entry += 2; /* "Job_Host" and "krb_princ" - peer scheduling */
+
 	if (IS_PBS_PYTHON_CMD(pbs_python_daemon_name))
 		DEBUG3_ARG1("BEGIN setting up all job attributes %s", "");
 	else
@@ -1057,6 +1059,15 @@ pbs_python_setup_job_class_attributes(void)
 		py_job_attr_types[i] = py_value_type;
 		attr_def_p++;
 	}
+
+	/* BEGIN: "Job_Host" and "krb_princ" - peer scheduling */
+	py_value_type = pbs_python_types_table[PP_STR_IDX].t_class;
+	_pps_getset_descriptor_object(py_pbs_job_klass, "krb_princ", Py_None, py_value_type, NULL, 0);
+	_pps_getset_descriptor_object(py_pbs_job_klass, "Job_Host", Py_None, py_value_type, NULL, 0);
+	py_job_attr_types[JOB_ATR_LAST] = py_value_type;
+	py_job_attr_types[JOB_ATR_LAST + 1] = py_value_type;
+	/* END: "Job_Host" and "krb_princ" - peer scheduling */
+
 	if (IS_PBS_PYTHON_CMD(pbs_python_daemon_name))
 		DEBUG3_ARG1("DONE setting up all job attributes, number set <%d>", i);
 	else

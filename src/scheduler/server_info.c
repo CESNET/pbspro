@@ -264,7 +264,8 @@ query_server(status *pol, int pbs_sd)
 		schd_resource *pres;
 		schd_resource *r;
 
-		hostres = find_resource(sinfo->nodes[i]->res, getallres(RES_HOST));
+		/* hostres = find_resource(sinfo->nodes[i]->res, getallres(RES_HOST)); */
+		hostres = sinfo->nodes[i]->res;
 		if (hostres != NULL) {
 			for (pres = hostres; pres != NULL; pres = pres->next) {
 				if (pres->type.is_string) {

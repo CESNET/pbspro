@@ -4790,6 +4790,353 @@ bad_restrict(u_long ipadd)
 }
 
 /**
+ * 
+ * momctl port START
+ * 
+ * 
+ */
+#include<stdarg.h>
+
+#ifndef SUCCESS
+# define SUCCESS 1
+#endif /* SUCCESS */
+
+#ifndef FAILURE
+# define FAILURE 0
+#endif /* FAILURE */
+
+extern proc_stat_t *proc_info;
+extern int nproc;
+
+static int
+injob(job *pjob, pid_t sid)
+{
+	task *ptask;
+
+	for (ptask = (task *) GET_NEXT(pjob->ji_tasks);
+	     ptask;
+	     ptask = (task *) GET_NEXT(ptask->ti_jobtask)) {
+		if (ptask->ti_qs.ti_sid <= 1)
+			continue;
+		if (ptask->ti_qs.ti_sid == sid)
+			return TRUE;
+	}
+	return FALSE;
+}
+
+ const char *PJobSubState[] = {
+	"TRANSIN",                /* Transit in, wait for commit */
+	"TRANSICM",               /* Transit in, wait for commit */
+	"TRNOUT",                 /* transiting job outbound */
+	"TRNOUTCM",               /* transiting outbound, rdy to commit */
+	"SUBSTATE04",
+	"SUBSTATE05",
+	"SUBSTATE06",
+	"SUBSTATE07",
+	"SUBSTATE08",
+	"SUBSTATE09",
+	"QUEUED",                 /* job queued and ready for selection */
+	"PRESTAGEIN",             /* job queued, has files to stage in */
+	"SUBSTATE12",
+	"SYNCRES",                /* job waiting on sync start ready */
+	"STAGEIN",                /* job staging in files then wait */
+	"STAGEGO",                /* job staging in files and then run */
+	"STAGECMP",               /* job stage in complete */
+	"SUBSTATE17",
+	"SUBSTATE18",
+	"SUBSTATE19",
+	"HELD",                   /* job held - user or operator */
+	"SYNCHOLD",	              /* job held - waiting on sync regist */
+	"DEPNHOLD",	              /* job held - waiting on dependency */
+	"SUBSTATE23",
+	"SUBSTATE24",
+	"SUBSTATE25",
+	"SUBSTATE26",
+	"SUBSTATE27",
+	"SUBSTATE28",
+	"SUBSTATE29",
+	"WAITING",	              /* job waiting on execution time */
+	"SUBSTATE31",
+	"SUBSTATE32",
+	"SUBSTATE33",
+	"SUBSTATE34",
+	"SUBSTATE35",
+	"SUBSTATE36",
+	"STAGEFAIL",              /* job held - file stage in failed */
+	"SUBSTATE38",
+	"SUBSTATE39",
+	"SUBSTATE40",
+	"PRERUN",		          /* job set to MOM to run */
+	"RUNNING",	              /* job running */
+	"SUSPEND",	              /* job suspended by client */
+	"SUBSTATE44",
+	"SCHSUSP",	              /* job supsended by scheduler */
+	"SUBSTATE46",
+	"SUBSTATE47",
+	"SUBSTATE48",
+	"SUBSTATE49",
+	"EXITING",	              /* Start of job exiting processing */
+	"STAGEOUT",	              /* job staging out (other) files	 */
+	"STAGEDEL",	              /* job deleteing staged out files	*/
+	"EXITED",		          /* job exit processing completed */
+	"ABORT",		          /* job is being aborted by server	*/
+	"SUBSTATE55",
+	"KILLSIS",	              /* (MOM) job kill IM to sisters */
+	"RUNEPILOG",	          /* (MOM) job epilogue running	*/
+	"OBIT",			          /* (MOM) job obit notice sent */
+	"TERM",			          /* Job is in site termination stage */
+	"RERUN",		          /* job is rerun, recover output stage */
+	"RERUN1",		          /* job is rerun, stageout phase */
+	"RERUN2",		          /* job is rerun, delete files stage */
+	"RERUN3",		          /* job is rerun, mom delete job */
+	"SUBSTATE64",
+	"SUBSTATE65",
+	"SUBSTATE66",
+	"SUBSTATE67",
+	"SUBSTATE68",
+	"EXPIRED",                /* subjob (of an array) is gone */
+	"BEGUN",                  /* Array job has begun */
+	"PROVISION",              /* job is waiting for provisioning tocomplete */
+	"WAITING_JOIN_JOB",       /* job waiting on IM_JOIN_JOB completion */
+	"SUBSTATE73",
+	"SUBSTATE74",
+	"SUBSTATE75",
+	"SUBSTATE76",
+	"SUBSTATE77",
+	"SUBSTATE78",
+	"SUBSTATE79",
+	"SUBSTATE80",
+	"SUBSTATE81",
+	"SUBSTATE82",
+	"SUBSTATE83",
+	"SUBSTATE84",
+	"SUBSTATE85",
+	"SUBSTATE86",
+	"SUBSTATE87",
+	"SUBSTATE88",
+	"SUBSTATE89",
+	"SUBSTATE90",
+	"TERMINATED",
+	"FINISHED",
+	"FAILED",
+	"MOVED",
+	"SUBSTATE95",
+	"SUBSTATE96",
+	"SUBSTATE97",
+	"SUBSTATE98",
+	"SUBSTATE99",
+	"SUBSTATE100",
+	"SUBSTATE101",
+	"SUBSTATE102",
+	"SUBSTATE103",
+	"SUBSTATE104",
+	"SUBSTATE105",
+	"SUBSTATE106",
+	"SUBSTATE107",
+	"SUBSTATE108",
+	"SUBSTATE109",
+	"SUBSTATE110",
+	"SUBSTATE111",
+	"SUBSTATE112",
+	"SUBSTATE113",
+	"SUBSTATE114",
+	"SUBSTATE115",
+	"SUBSTATE116",
+	"SUBSTATE117",
+	"SUBSTATE118",
+	"SUBSTATE119",
+	"SUBSTATE120",
+	"SUBSTATE121",
+	"SUBSTATE122",
+	"SUBSTATE123",
+	"SUBSTATE124",
+	"SUBSTATE125",
+	"SUBSTATE126",
+	"SUBSTATE127",
+	"SUBSTATE128",
+	"SUBSTATE129",
+	"SUBSTATE130",
+	"SUBSTATE131",
+	"SUBSTATE132",
+	"SUBSTATE133",
+	"SUBSTATE134",
+	"SUBSTATE135",
+	"SUBSTATE136",
+	"SUBSTATE137",
+	"SUBSTATE138",
+	"SUBSTATE139",
+	"SUBSTATE140",
+	"SUBSTATE141",
+	"SUBSTATE142",
+	"SUBSTATE143",
+	"SUBSTATE144",
+	"SUBSTATE145",
+	"SUBSTATE146",
+	"SUBSTATE147",
+	"SUBSTATE148",
+	"SUBSTATE149",
+	"SUBSTATE150",
+	"SUBSTATE151",
+	"SUBSTATE152",
+	"DELJOB",                 /* (MOM) Job del_job_wait to sisters	*/
+	"SUBSTATE154",
+	"SUBSTATE155",
+	NULL
+};
+
+static char *
+getjoblist()
+{
+	static char *list = NULL;
+	static int listlen = 0;
+	job *pjob;
+	int firstjob = 1;
+
+	if (list == NULL) {
+    	if ((list = calloc(BUFSIZ + 50, sizeof(char)))==NULL) {
+      		/* FAILURE - cannot alloc memory */
+      		fprintf(stderr,"ERROR: could not calloc!\n");
+      		/* since memory cannot be allocated, report no jobs */
+      		return (" ");
+		}
+		listlen = BUFSIZ;
+	}
+
+	*list = '\0'; /* reset the list */
+
+	if ((pjob = (job *)GET_NEXT(svr_alljobs)) == NULL) {
+		/* no jobs - return space character */
+		return(" ");
+	}
+
+	for (;pjob != NULL;pjob = (job *)GET_NEXT(pjob->ji_alljobs)) {
+		if (!firstjob)
+			strcat(list, " ");
+
+		strcat(list, pjob->ji_qs.ji_jobid);
+		if ((int)strlen(list) >= listlen) {
+			char *tmpList;
+			listlen += BUFSIZ;
+			tmpList = realloc(list,listlen);
+			if (tmpList == NULL) {
+				/* FAILURE - cannot alloc memory */
+				fprintf(stderr,"ERROR: could not realloc!\n");
+				/* since memory cannot be allocated, report no jobs */
+				return(" ");
+			}
+
+			list = tmpList;
+		}
+
+		firstjob = 0;
+	}	/* END for (pjob) */
+
+	if (list[0] == '\0') {
+		/* no jobs - return space character */
+		strcat(list, " ");
+	}
+
+	return(list);
+}	/* END getjoblist() */
+
+char
+*users()
+{
+	job *pjob = (job*)GET_NEXT(svr_alljobs);
+	int first = 1;
+
+	strcpy(ret_string," ");
+
+	for (;pjob != NULL; pjob = (job*)GET_NEXT(pjob->ji_alljobs)) {
+		char *euser = pjob->ji_wattr[(int)JOB_ATR_euser].at_val.at_str;
+
+		/* check for duplicated entries */
+		char *dupl = strstr(ret_string,euser);
+		if (dupl != NULL) {
+			if (dupl[strlen(euser)] == ',' || dupl[strlen(euser)] == '\0' )
+				continue;
+		}
+
+		if (!first) {
+			strcat(ret_string,",");
+		}
+		first = 0;
+
+		strcat(ret_string,euser);
+		if (strlen(ret_string) >= 4096-32-1) {
+			strcat(ret_string,",...");
+			break;
+		}
+	}
+
+	return(ret_string);
+	}	/* END users() */ 
+
+
+/**
+ * similar to MUSNPrintF in moab
+*/
+int
+MUSNPrintF(char **BPtr, int	 *BSpace, char	*Format, ...)
+{
+	int len;
+	va_list Args;
+
+	if ((BPtr == NULL) || (BSpace == NULL) || (Format == NULL) || (*BSpace <= 0)) {
+		return(FAILURE);
+	}
+
+	va_start(Args, Format);
+	len = vsnprintf(*BPtr, *BSpace, Format, Args);
+	va_end(Args);
+
+	if (len <= 0) {
+		return(FAILURE);
+	}
+
+	*BPtr += len;
+	*BSpace -= len;
+	return(SUCCESS);
+}	/* END MUSNPrintF() */
+
+
+/**
+ * similar to MUStrNCat in moab
+*/
+
+int
+MUStrNCat(char **BPtr, int	 *BSpace, char	*Src)
+{
+	int index;
+
+	if ((BPtr == NULL) || (BSpace == NULL) || (*BSpace <= 0)) {
+		return(FAILURE);
+	}
+
+	if ((Src == NULL) || (Src[0] == '\0')) {
+		return(SUCCESS);
+	}
+
+	for (index = 0;index < *BSpace - 1;index++) {
+		if (Src[index] == '\0')
+			break;
+
+		(*BPtr)[index] = Src[index];
+	}	/* END for (index) */
+
+	(*BPtr)[index] = '\0';
+	*BPtr	 += index;
+	*BSpace -= index;
+	return(SUCCESS);
+}	/* END MUStrNCat() */
+ /**
+ * 
+ * momctl port END
+ * 
+ * 
+ */
+
+/**
  * @brief
  *	Process a request for the resource monitor. The i/o
  *	will take place using DIS over a tcp fd or an tpp stream.
@@ -4819,6 +5166,9 @@ rm_request(int iochan, int version, int prot)
 	u_long ipadd = 0;
 	u_short port = 0;
 	void (*close_io)(int) = NULL;
+
+	char *BPtr;
+	int   BSpace;
 
 	errno = 0;
 	if (!output) {
@@ -4906,6 +5256,452 @@ rm_request(int iochan, int version, int prot)
 					sprintf(output, "%s=? %d",
 						cp, RM_ERR_UNKNOWN);
 				} else {
+
+					if (!strncasecmp(name, "clearjob", strlen("clearjob"))) {
+						char *ptr = NULL;
+
+						job *pjob = NULL, *pjobnext = NULL;
+
+						if ((*curr == '=') && ((*curr) + 1 != '\0')) {
+							ptr = curr + 1;
+						}
+
+						/* purge job if local */
+
+						if (ptr == NULL) {
+							strcpy(output, "invalid clearjob request");
+						} else {
+							char tmpLine[1024];
+
+							if (!strcasecmp(ptr, "all")) {
+								if ((pjob = (job *)GET_NEXT(svr_alljobs)) != NULL) {
+									while (pjob != NULL) {
+										sprintf(tmpLine, "clearing job %s", pjob->ji_qs.ji_jobid);
+										//log_record(PBSEVENT_SYSTEM, 0, id, tmpLine);
+										pjobnext = (job *)GET_NEXT(pjob->ji_alljobs);
+
+										(void)kill_job(pjob, SIGKILL);
+										mom_deljob(pjob);
+
+										pjob = pjobnext;
+
+										strcat(output, tmpLine);
+										strcat(output, "\n");
+									}
+								}
+
+								strcat(output, "clear completed");
+							} else if ((pjob = find_job(ptr)) != NULL) {
+								sprintf(tmpLine, "clearing job %s",pjob->ji_qs.ji_jobid);
+								//log_record(PBSEVENT_SYSTEM, 0, id, tmpLine);
+
+								(void)kill_job(pjob, SIGKILL);
+								mom_deljob(pjob);
+
+								strcpy(output, tmpLine);
+							}
+						}
+					} else if (!strncasecmp(name, "jobs", strlen("jobs"))) {
+						char *tmpLine;
+						output[0] = '\0';
+
+						BPtr = output;
+						BSpace = BUFSIZ;
+
+						tmpLine = getjoblist();
+						MUStrNCat(&BPtr, &BSpace, "jobs=");
+						MUStrNCat(&BPtr, &BSpace, tmpLine);
+					} else if (!strncasecmp(name, "killed", strlen("killed"))) {
+						char *reason = NULL;
+						int pid;
+						char *by;
+						char *pos;
+						char *jobid = NULL;
+						job *pjob = NULL;
+						enum reporttype {bypid, byjobid} reportedby;
+
+						BPtr = output;
+						BSpace = BUFSIZ;
+
+						curr++; /* +1 for '=' */
+
+						reason = strchr(curr, ':');
+
+						by = strndup(curr, reason - curr);
+
+						reason++; /* +1 for ':' */
+						if (reason == NULL || *reason == '\0')
+							goto bad;
+
+						pos = by;
+						reportedby = bypid;
+						while (*pos != '\0') {
+							if (!isdigit(*pos)) {
+								reportedby = byjobid;
+								break;
+							}
+							pos++;
+						}
+
+						switch (reportedby) {
+							case bypid:
+								pid = atoi(by);
+								break;
+							case byjobid:
+								jobid = by;
+								break;
+							default:
+								goto bad;
+						}
+
+						if ((pjob = (job *)GET_NEXT(svr_alljobs)) != NULL) {
+							int kill_found = 0;
+							int c;
+							int i;
+							int fd;
+							u_long ipaddr;
+							proc_stat_t	*ps;
+							while (pjob != NULL) {
+								switch (reportedby) {
+									case bypid:
+										for (i=0; i<nproc; i++) {
+											ps = &proc_info[i];
+											if (!injob(pjob, ps->session))
+												continue;
+
+											if (ps->pid == pid) {
+												kill_found = true;
+												break;
+											}
+										}
+										break;
+									case byjobid:
+										if (!strcmp(pjob->ji_qs.ji_jobid, jobid))
+											kill_found = true;
+										break;
+								}
+
+								if (kill_found) {
+									char *kill_msg;
+
+									sprintf(log_buffer, "%s - exceeded limit -", reason);
+
+									if (pjob) {
+										c = pjob->ji_qs.ji_svrflags;
+										kill_msg = malloc(25 + strlen(log_buffer));
+										if (kill_msg != NULL ) {
+											sprintf(kill_msg, "=>> PBS: process killed: %s\n", log_buffer);
+											if (c & JOB_SVFLG_HERE) {
+												message_job(pjob, StdErr, kill_msg);
+											} else {
+												/* Multi-mom scenario - adding a connection to demux for reporting error */
+
+												struct sockaddr_in *ap;
+												/* We always have a stream open to MS at node 0 */
+												i = pjob->ji_hosts[0].hn_stream;
+												if ((ap = tpp_getaddr(i)) == NULL) {
+													log_joberr(-1, "over_limit_message", "cannot write to job stderr because there is no stream to MS", pjob->ji_qs.ji_jobid);
+												} else {
+													ipaddr = ap->sin_addr.s_addr;
+													if ((fd = open_demux(ipaddr, pjob->ji_stderr)) == -1) {
+														(void)sprintf(log_buffer, "over_limit_message: cannot write to job stderr because open_demux failed");
+														log_event(PBSEVENT_JOB | PBSEVENT_FORCE, PBS_EVENTCLASS_JOB, LOG_INFO, pjob->ji_qs.ji_jobid, log_buffer);
+													} else {
+														(void)write(fd, pjob->ji_wattr[(int)JOB_ATR_Cookie].at_val.at_str,
+														strlen(pjob->ji_wattr[(int)JOB_ATR_Cookie].at_val.at_str));
+														(void)write(fd, kill_msg, strlen(kill_msg));
+														(void)close(fd);
+													}
+												}
+											}
+											free(kill_msg);
+										}
+									}
+
+									kill_msg = malloc(80 + strlen(log_buffer) + \
+										strlen(pjob->ji_qs.ji_jobid) + \
+										strlen(pjob->ji_wattr[(int)JOB_ATR_job_owner].at_val.at_str) + \
+										strlen(mom_host) + \
+										strlen(pjob->ji_wattr[(int)JOB_ATR_jobname].at_val.at_str));
+									if (kill_msg != NULL) {
+										sprintf(kill_msg, "%s %s %s %s name: %s",
+											pjob->ji_qs.ji_jobid,
+											pjob->ji_wattr[(int)JOB_ATR_job_owner].at_val.at_str,
+											mom_host,
+											log_buffer,
+											pjob->ji_wattr[(int)JOB_ATR_jobname].at_val.at_str);
+										log_err(0, "RESOURCE_KILL", kill_msg);
+										free(kill_msg);
+									}
+
+									switch (reportedby) {
+										case bypid:
+											MUStrNCat(&BPtr, &BSpace, "PID reported");
+											break;
+										case byjobid:
+											MUStrNCat(&BPtr, &BSpace, "JOBID reported");
+											break;
+									}
+
+									break;
+								}
+
+								pjob = (job *)GET_NEXT(pjob->ji_alljobs);
+							}
+
+							if (!kill_found) {
+								switch (reportedby) {
+									case bypid:
+										MUStrNCat(&BPtr, &BSpace, "PID not found");
+										break;
+									case byjobid:
+										MUStrNCat(&BPtr, &BSpace, "JOBID not found");
+										break;
+								}
+							}
+						} else {
+							MUStrNCat(&BPtr, &BSpace, "no running jobs");
+						}
+
+						free(by);
+
+					} else if (!strncasecmp(name, "users", strlen("users"))) {
+						char *tmpLine;
+						output[0] = '\0';
+
+						BPtr = output;
+						BSpace = BUFSIZ;
+
+						tmpLine = users();
+						MUStrNCat(&BPtr, &BSpace, "users=");
+						MUStrNCat(&BPtr, &BSpace, tmpLine);
+
+					} else if (!strncasecmp(name, "diag", strlen("diag"))) {
+						char tmpLine[BUFSIZ];
+						char *ptr;
+						int verbositylevel = 0;
+
+						int rc;
+						time_t Now;
+
+						job *pjob;
+
+						struct varattr *pva;
+
+						time(&Now);
+
+						ptr = name + strlen("diag");
+
+						verbositylevel = (int)strtol(ptr, NULL, 10);
+
+						output[0] = '\0';
+
+						BPtr = output;
+						//BSpace = sizeof(output);
+						BSpace = BUFSIZ;
+
+						int BSize = BSpace;
+
+						sprintf(tmpLine, "\nHost: %s/%s   Version: %s   PID: %ld\n",
+							mom_short_name,
+							mom_host,
+							PACKAGE_VERSION,
+							(long)getpid());
+
+						MUStrNCat(&BPtr, &BSpace, tmpLine);
+
+						//mom_server_all_diag(&BPtr, &BSpace);
+
+						sprintf(tmpLine, "HomeDirectory:		  %s\n", (mom_home != NULL) ? mom_home : "N/A");
+
+						MUStrNCat(&BPtr, &BSpace, tmpLine);
+
+#ifdef HAVE_SYS_STATVFS_H
+						{
+							#include <sys/statvfs.h>
+
+							struct statvfs VFSStat;
+
+							if (statvfs(path_spool, &VFSStat) < 0) {
+								MUSNPrintF(&BPtr, &BSpace, "ALERT:  cannot stat stdout/stderr spool directory '%s' (errno=%d) %s\n",
+									path_spool,
+									errno,
+									strerror(errno));
+							} else {
+								if (VFSStat.f_bavail > 0) {
+									if (verbositylevel >= 1)
+										MUSNPrintF(&BPtr, &BSpace, "stdout/stderr spool directory: '%s' (%d blocks available)\n",
+											path_spool,
+											VFSStat.f_bavail);
+								} else  {
+									MUSNPrintF(&BPtr, &BSpace, "ALERT:  stdout/stderr spool directory '%s' is full\n",
+										path_spool);
+								}
+							}
+						}	/* END BLOCK */
+#endif /* HAVE_SYS_STATVFS_H */
+
+
+						if (verbositylevel >= 3) {
+#if SYSLOG
+							MUStrNCat(&BPtr, &BSpace, "NOTE:  syslog enabled\n");
+#else /* SYSLOG */
+							MUStrNCat(&BPtr, &BSpace, "NOTE:  syslog not enabled (use 'configure --enable-syslog' to enable)\n");
+#endif /* SYSLOG */
+						}
+
+
+						sprintf(tmpLine, "MOM active:			 %ld seconds\n", (long)Now - mom_net_up_time);
+
+						MUStrNCat(&BPtr, &BSpace, tmpLine);
+
+						if (verbositylevel >= 1) {
+							sprintf(tmpLine, "Communication Model:	%s\n", "TPP");
+							MUStrNCat(&BPtr, &BSpace, tmpLine);
+
+						}
+
+						if ((verbositylevel >= 1) && (pbs_tcp_timeout > 0)) {
+							sprintf(tmpLine, "TCP Timeout:			%d seconds\n", (int)pbs_tcp_timeout);
+
+							MUStrNCat(&BPtr, &BSpace, tmpLine);
+						}
+
+						if (verbositylevel >= 1) {
+
+							struct stat s;
+
+							int prologfound = 0;
+
+							if (stat(path_prolog, &s) != -1) {
+								MUSNPrintF(&BPtr, &BSpace, "Prolog:				 %s (enabled)\n", path_prolog);
+
+								prologfound = 1;
+							} else if (verbositylevel >= 2) {
+								MUSNPrintF(&BPtr, &BSpace, "Prolog:				 %s (disabled)\n", path_prolog);
+							}
+						}
+
+						if (verbositylevel >= 2) {
+							/* check alarm */
+
+							rc = alarm(alarm_time);
+
+							alarm(rc);
+
+							sprintf(tmpLine, "Alarm Time:			 %d of %d seconds\n",
+								rc,
+								alarm_time);
+
+							MUStrNCat(&BPtr, &BSpace, tmpLine);
+						}
+
+#ifdef SAFE_STOP
+						if (mom_safe_stop) {
+							/* pending restart notice */
+							sprintf(tmpLine, "Pending restart:		True\n");
+
+							MUStrNCat(&BPtr, &BSpace, tmpLine);
+						} else {
+							sprintf(tmpLine, "Pending restart:		False\n");
+
+							MUStrNCat(&BPtr, &BSpace, tmpLine);
+						}
+#endif
+
+						/* joblist */
+
+						if ((pjob = (job *)GET_NEXT(svr_alljobs)) == NULL) {
+							sprintf(tmpLine, "NOTE:  no local jobs detected\n");
+
+							MUStrNCat(&BPtr, &BSpace, tmpLine);
+						} else {
+							int	numcpus = 0;
+							int	num;
+							hnodent *np;
+							task  *ptask;
+							char   SIDList[1024];
+
+							char  *VPtr;  /* job env variable value pointer */
+
+							char *SPtr;
+							int   SSpace;
+
+							for (;pjob != NULL;pjob = (job *)GET_NEXT(pjob->ji_alljobs)) {
+								SPtr   = SIDList;
+								SSpace = sizeof(SIDList);
+
+								SIDList[0] = '\0';
+
+								for (ptask = (task *)GET_NEXT(pjob->ji_tasks);
+									ptask != NULL;
+									ptask = (task *)GET_NEXT(ptask->ti_jobtask)) {
+									/* only check on tasks that we think should still be around */
+
+									if (ptask->ti_qs.ti_status != TI_STATE_RUNNING)
+										continue;
+
+									/* NOTE:  on linux systems, the session master should have pid == sessionid */
+
+									MUSNPrintF(&SPtr, &SSpace, "%s%d", (SIDList[0] != '\0') ? "," : "", ptask->ti_qs.ti_sid);
+								}  /* END for (task) */
+
+								for (num=0, np = pjob->ji_hosts; num < pjob->ji_numnodes; num++, np++) {
+									if (strcmp(np->hn_host, mom_host) == 0)
+									numcpus += np->hn_nprocs;
+								}
+
+								sprintf(tmpLine, "job[%s]  state=%s  sidlist=%s",
+									pjob->ji_qs.ji_jobid,
+									PJobSubState[get_job_substate(pjob)],
+									SIDList);
+
+								if (BSpace < strlen(tmpLine) + 128) {
+									BSize += BUFSIZ;
+									BSpace += BUFSIZ;
+									output = (char *)realloc(output, BSize);
+									if (!output) {
+										log_err(errno, __func__, "realloc");
+										goto bad;
+									}
+									BPtr = output + strlen(output);
+								}
+
+								MUStrNCat(&BPtr, &BSpace, tmpLine);
+
+								MUStrNCat(&BPtr, &BSpace, "\n");
+							}  /* END for (pjob) */
+
+							sprintf(tmpLine, "Assigned CPU Count:	 %d\n", numcpus);
+
+							MUStrNCat(&BPtr, &BSpace, tmpLine);
+						}  /* END else ((pjob = (job *)GET_NEXT(svr_alljobs)) == NULL) */
+
+						if ((pjob = (job *)GET_NEXT(svr_newjobs)) != NULL) {
+							while (pjob != NULL) {
+								sprintf(tmpLine, "job[%s]  state=NEW\n", pjob->ji_qs.ji_jobid);
+
+								if (BSpace < strlen(tmpLine) + 128) {
+									BSize += BUFSIZ;
+									BSpace += BUFSIZ;
+									output = (char *)realloc(output, BSize);
+									if (!output) {
+										log_err(errno, __func__, "realloc");
+										goto bad;
+									}
+									BPtr = output + strlen(output);
+								}
+
+								MUStrNCat(&BPtr, &BSpace, tmpLine);
+
+								pjob = (job *)GET_NEXT(pjob->ji_alljobs);
+							}
+						}
+						MUStrNCat(&BPtr, &BSpace, "\ndiagnostics complete\n");
+
+					} else {
+
+
 					ap = rm_search(config_array, name);
 					attr = momgetattr(curr);
 
@@ -4947,6 +5743,7 @@ rm_request(int iochan, int version, int prot)
 					} else { /* not found anywhere */
 						sprintf(output, "%s=? %d", cp, rm_errno);
 					}
+				}
 				}
 				free(cp);
 				ret = diswst(iochan, output);

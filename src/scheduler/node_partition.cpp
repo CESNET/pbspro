@@ -713,8 +713,8 @@ node_partition_update(status *policy, node_partition *np)
 
 		if (np->res == NULL)
 			np->res = dup_selective_resource_list(np->ninfo_arr[i]->res,
-							      policy->resdef_to_check, arl_flags);
-		else if (!add_resource_list(policy, np->res, np->ninfo_arr[i]->res, arl_flags)) {
+							      policy->resdef_to_check_no_hostvnode, arl_flags); /* policy resdef_to_check_no_hostvnode rozbiji vicenodove uzly */
+		else if (!add_resource_list(policy, np->res, np->ninfo_arr[i]->res, arl_flags | NO_HOSTVNODE)) {
 			rc = 0;
 			break;
 		}
@@ -996,7 +996,7 @@ resresv_can_fit_nodepart(status *policy, node_partition *np, resource_resv *resr
 	get_resresv_spec(resresv, &spec, &pl);
 	for (i = 0; spec->chunks[i] != NULL; i++) {
 		if (check_avail_resources(np->res, spec->chunks[i]->req,
-					  pass_flags | CHECK_ALL_BOOLS, policy->resdef_to_check,
+					  pass_flags | CHECK_ALL_BOOLS, policy->resdef_to_check_no_hostvnode, /* policy resdef_to_check_no_hostvnode rozbiji vicenodove uzly */
 					  INSUFFICIENT_RESOURCE, err) == 0) {
 			if ((flags & RETURN_ALL_ERR)) {
 				can_fit = 0;

@@ -2204,6 +2204,7 @@ int
 compare_res_to_str(schd_resource *res, char *str, enum resval_cmpflag cmpflag)
 {
 	int i;
+	int neg = 0;
 
 	if (res == NULL || str == NULL)
 		return 0;
@@ -2211,20 +2212,46 @@ compare_res_to_str(schd_resource *res, char *str, enum resval_cmpflag cmpflag)
 	if (res->str_avail == NULL)
 		return 0;
 
+	if (str[0] == '^') {
+		neg = 1;
+		str++;
+	}
+
+	if (neg) {
+		int both = 0;
+		for (i = 0; res->str_avail[i] != NULL; i++) {
+			if (cmpflag == CMP_CASE) {
+				if (!strcmp(res->str_avail[i], str) || 
+				    !strcmp(res->str_avail[i], str-1))
+					both++;
+			} else if (cmpflag == CMP_CASELESS) {
+				if (!strcasecmp(res->str_avail[i], str) || 
+				    !strcasecmp(res->str_avail[i], str-1))
+					both++;
+			} else {
+				log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_NOTICE, res->name, "Incorrect flag for comparison.");
+				return 0;
+			}
+		}
+
+		if (both == 2)
+		    return 1;
+	}
+
 	for (i = 0; res->str_avail[i] != NULL; i++) {
 		if (cmpflag == CMP_CASE) {
 			if (!strcmp(res->str_avail[i], str))
-				return 1;
+				return 1 - neg;
 		} else if (cmpflag == CMP_CASELESS) {
 			if (!strcasecmp(res->str_avail[i], str))
-				return 1;
+				return 1 - neg;
 		} else {
 			log_event(PBSEVENT_DEBUG3, PBS_EVENTCLASS_JOB, LOG_NOTICE, res->name, "Incorrect flag for comparison.");
 			return 0;
 		}
 	}
 	/* if we got here, we didn't match the string */
-	return 0;
+	return neg;
 }
 
 /**

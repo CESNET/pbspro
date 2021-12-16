@@ -383,6 +383,11 @@ update_resource_defs(int pbs_sd)
 
 	allres = tmpres;
 
+	if (allstrres) {
+		free_resource_list(allstrres);
+		allstrres = NULL;
+	}
+
 	consres.clear();
 	for (const auto &def : allres) {
 		if (def.second->type.is_consumable)

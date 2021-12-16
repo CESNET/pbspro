@@ -362,7 +362,8 @@ enum add_resource_list_flags {
 	USE_RESOURCE_LIST = 2,
 	ADD_UNSET_BOOLS_FALSE = 4,
 	ADD_AVAIL_ASSIGNED = 8,
-	ADD_ALL_BOOL = 16
+	ADD_ALL_BOOL = 16,
+	NO_HOSTVNODE = 32
 	/* next flag 32 */
 };
 

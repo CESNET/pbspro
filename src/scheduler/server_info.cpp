@@ -245,6 +245,28 @@ query_server(status *pol, int pbs_sd)
 		qsort(sinfo->nodes, sinfo->num_nodes, sizeof(node_info *),
 		      multi_node_sort);
 
+	for (i = 0; sinfo->nodes[i] != NULL; i++) {
+		schd_resource *hostres;
+		schd_resource *pres;
+		schd_resource *r;
+
+		/* hostres = find_resource(sinfo->nodes[i]->res, getallres(RES_HOST)); */
+		hostres = sinfo->nodes[i]->res;
+		if (hostres != NULL) {
+			for (pres = hostres; pres != NULL; pres = pres->next) {
+				if (pres->type.is_string) {
+					r = find_alloc_resource_by_str(allstrres, pres->name);
+					add_resource_str_arr(r, pres->str_avail, 0);
+					r->type.is_string = 1;
+					r->type.is_non_consumable = 1;
+					r->def = pres->def;
+					if (allstrres == NULL)
+					    allstrres = r;
+				}
+			}
+		}
+	}
+
 	/* get the queues */
 	sinfo->queues = query_queues(policy, pbs_sd, sinfo);
 	if (sinfo->queues.empty()) {
@@ -1332,7 +1354,7 @@ add_resource_list(status *policy, schd_resource *r1, schd_resource *r2, unsigned
 		if ((flags & NO_UPDATE_NON_CONSUMABLE) && cur_r2->def->type.is_non_consumable)
 			continue;
 		if ((flags & USE_RESOURCE_LIST)) {
-			const auto &rtc = policy->resdef_to_check;
+			const auto &rtc = (flags & NO_HOSTVNODE) ? policy->resdef_to_check_no_hostvnode : policy->resdef_to_check;
 			if (rtc.find(cur_r2->def) == rtc.end() && !cur_r2->type.is_boolean)
 				continue;
 		}
@@ -1399,6 +1421,49 @@ add_resource_list(status *policy, schd_resource *r1, schd_resource *r2, unsigned
 			}
 		}
 	}
+
+	schd_resource *ares;
+	char neg[1027];
+
+	for (ares = allstrres; ares != NULL; ares = ares->next) {
+		if ((flags & USE_RESOURCE_LIST)) {
+			const auto &rtc = (flags & NO_HOSTVNODE) ? policy->resdef_to_check_no_hostvnode : policy->resdef_to_check;
+			if (rtc.find(ares->def) == rtc.end() && 
+				!ares->def->type.is_boolean)
+				continue;
+		}
+
+		cur_r1 = find_resource(r1, ares->def);
+		if (cur_r1 == NULL) {
+			nres = create_resource(ares->def->name.c_str(), NULL, RF_NONE);
+			if (nres == NULL)
+				return 0;
+
+			if (end_r1 == NULL)
+				for (end_r1 = r1; end_r1->next != NULL; end_r1 = end_r1->next)
+					;
+			end_r1->next = nres;
+			end_r1 = nres;
+
+			for (int i = 0; ares->str_avail[i] != NULL; i++) {
+				snprintf(neg, sizeof(neg), "^%s", ares->str_avail[i]);
+				add_str_to_unique_array(&(nres->str_avail), neg);
+			}
+		} else {
+			cur_r2 = find_resource(r2, ares->def);
+			for (int i = 0; ares->str_avail[i] != NULL; i++) {
+				if (cur_r2 && !is_string_in_arr(cur_r2->str_avail, ares->str_avail[i])) {
+					snprintf(neg, sizeof(neg), "^%s", ares->str_avail[i]);
+					add_str_to_unique_array(&(cur_r1->str_avail), neg);
+				} 
+				if (cur_r2 == NULL) {
+					snprintf(neg, sizeof(neg), "^%s", ares->str_avail[i]);
+					add_str_to_unique_array(&(cur_r1->str_avail), neg);
+				}
+			}
+		}
+	}
+
 	return 1;
 }
 
@@ -2303,6 +2368,42 @@ dup_selective_resource_list(schd_resource *res, std::unordered_set<resdef *> &de
 			}
 		}
 	}
+
+	schd_resource *ares = NULL;
+	schd_resource *cur = NULL;
+	schd_resource *end = NULL;
+	char neg[1027];
+
+	for (ares = allstrres; ares != NULL; ares = ares->next) {
+		if (deflist.find(ares->def) == deflist.end())
+			continue;
+
+		cur = find_resource(head, ares->def);
+		if (cur == NULL) {
+			nres = create_resource(ares->def->name.c_str(), NULL, RF_NONE);
+			if (nres == NULL)
+				return 0;
+
+			if (end == NULL)
+				for (end = head; end->next != NULL; end = end->next)
+					;
+			end->next = nres;
+			end = nres;
+
+			for (int i = 0; ares->str_avail[i] != NULL; i++) {
+				snprintf(neg, sizeof(neg), "^%s", ares->str_avail[i]);
+				add_str_to_unique_array(&(nres->str_avail), neg);
+			}
+		} else {
+			for (int i = 0; ares->str_avail[i] != NULL; i++) {
+				if (!is_string_in_arr(cur->str_avail, ares->str_avail[i])) {
+					snprintf(neg, sizeof(neg), "^%s", ares->str_avail[i]);
+					add_str_to_unique_array(&(cur->str_avail), neg);
+				}
+			}
+		}
+	}
+
 	return head;
 }
 

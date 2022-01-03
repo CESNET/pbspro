@@ -2709,7 +2709,9 @@ create_pbs_node2(char *objname, svrattrl *plist, int perms, int *bad, struct pbs
 	struct pbsnode *pnode;
 	struct pbsnode **tmpndlist;
 	int ntype; /* node type, always PBS */
+#if 0
 	char *pc;
+#endif
 	char *phost;	    /* trial host name */
 	char *pname;	    /* node name w/o any :ts       */
 	u_long *pul = NULL; /* 0 terminated host adrs array*/
@@ -2888,6 +2890,7 @@ create_pbs_node2(char *objname, svrattrl *plist, int perms, int *bad, struct pbs
 			strncpy(realfirsthost, (get_nattr_arst(pnode, ND_ATR_Mom))->as_string[0], (sizeof(realfirsthost) - 1));
 			realfirsthost[PBS_MAXHOSTNAME] = '\0';
 
+#if 0
 			if ((inet_pton(AF_INET, realfirsthost, &(sa4.sin_addr)) != 1) &&
 			    (inet_pton(AF_INET6, realfirsthost, &(sa6.sin6_addr)) != 1)) {
 				/* Not an IPv4 or IPv6 address, truncate it. */
@@ -2895,6 +2898,7 @@ create_pbs_node2(char *objname, svrattrl *plist, int perms, int *bad, struct pbs
 				if (pc)
 					*pc = '\0';
 			}
+#endif
 			rc = prdef->rs_decode(&presc->rs_value, "", "host", realfirsthost);
 			presc->rs_value.at_flags |= ATR_VFLAG_DEFLT; /* so not written to nodes file */
 		} else {

@@ -209,6 +209,10 @@ char *path_undeliv;
 char *path_addconfigs;
 char path_addconfigs_reserved_prefix[] = "PBS";
 
+#define SAFE_STOP
+int mom_safe_stop = 0;
+void safe_stop(int);
+
 char *path_hooks;
 char *path_hooks_workdir;
 char *path_rescdef;
@@ -7819,6 +7823,9 @@ main(int argc, char *argv[])
 	act.sa_handler = toolong; /* handle an alarm call */
 	sigaction(SIGALRM, &act, NULL);
 
+	act.sa_handler = safe_stop;	/* shutdown only if no multinode jobs */
+	sigaction(SIGUSR1, &act, NULL);
+
 	act.sa_handler = stop_me; /* shutdown for these */
 	sigaction(SIGINT, &act, NULL);
 	sigaction(SIGTERM, &act, NULL);
@@ -7840,7 +7847,7 @@ main(int argc, char *argv[])
 	 **	that is exec'ed will not have SIG_IGN set for anything.
 	 */
 	sigaction(SIGPIPE, &act, NULL);
-	sigaction(SIGUSR1, &act, NULL);
+	/* sigaction(SIGUSR1, &act, NULL); */
 #ifdef SIGINFO
 	sigaction(SIGINFO, &act, NULL);
 #endif
@@ -8361,6 +8368,9 @@ main(int argc, char *argv[])
 			process_hup();
 			internal_state_update = UPDATE_MOM_STATE;
 		}
+
+		if (mom_safe_stop)
+			safe_stop(SIGUSR1);
 #endif
 
 		time_now = time(NULL);
@@ -9221,6 +9231,47 @@ void
 #else /* WIN32 */
 
 #endif /* WIN32 */
+
+/**
+ * @brief
+ *	signal handler for SIGUSR1
+ *	quit only if no multinode jobs on node
+ *	do not kill jobs on exit
+ *
+ * @param[in] sig - signal number
+ *
+ * @return 	Void
+ *
+ */
+
+void
+safe_stop(int sig)
+{
+        switch (sig) {
+		case SIGUSR1:
+			mom_run_state = 0;
+			mom_safe_stop = 1;
+			job *pjob;
+			for (pjob = (job *)GET_NEXT(svr_alljobs);
+				pjob;
+				pjob = (job *)GET_NEXT(pjob->ji_alljobs)) {
+				if (check_job_state(pjob, JOB_STATE_LTR_RUNNING)) {
+					if (pjob->ji_numnodes > 1) {
+						mom_run_state = 1;
+					}
+				}
+
+				if (check_job_state(pjob, JOB_STATE_LTR_RUNNING) == 0) {
+					mom_run_state = 1;
+				}
+			}
+			return;
+		default:
+			break;
+	}
+
+
+}
 
 /* the following is used in support of the getkbdtime() function */
 

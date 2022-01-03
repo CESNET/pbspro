@@ -8820,7 +8820,7 @@ main(int argc, char *argv[])
 
 	/* if kill_jobs_on_exit set, kill any running/suspended jobs */
 
-	if (kill_jobs_on_exit) {
+	if (kill_jobs_on_exit && recover != 2) {
 		pjob = (job *) GET_NEXT(svr_alljobs);
 		while (pjob) {
 			if (check_job_substate(pjob, JOB_SUBSTATE_RUNNING) || check_job_substate(pjob, JOB_SUBSTATE_SUSPEND) || check_job_substate(pjob, JOB_SUBSTATE_SCHSUSP))

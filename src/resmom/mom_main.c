@@ -8846,6 +8846,14 @@ main(int argc, char *argv[])
 
 			pjob = (job *) GET_NEXT(pjob->ji_alljobs);
 		}
+	} else {
+		/* save running jobs on exit */
+		pjob = (job *)GET_NEXT(svr_alljobs);
+		while (pjob) {
+			if (check_job_substate(pjob, JOB_SUBSTATE_RUNNING))
+				job_save(pjob);
+			pjob = (job *)GET_NEXT(pjob->ji_alljobs);
+		}
 	}
 
 #ifndef WIN32

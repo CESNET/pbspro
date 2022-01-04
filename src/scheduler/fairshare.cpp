@@ -1036,3 +1036,132 @@ reset_usage(group_info *node)
 	node->usage = 1;
 	node->temp_usage = 1;
 }
+
+fairshare_head *
+get_fairshare_tree(char *name, fairshare_trees *fairshares)
+{
+    while (fairshares != NULL) {
+        if (name == NULL && fairshares->name == NULL)
+            return fairshares->fstree;
+
+        if (name != NULL && fairshares->name != NULL) {
+            if (!strcmp(name, fairshares->name))
+                return fairshares->fstree;
+        }
+
+        fairshares = fairshares->next;
+    }
+
+    return NULL;
+}
+
+void
+free_fairshares(fairshare_trees *fairshares)
+{
+    fairshare_trees *prev_fairshares;
+
+    while (fairshares != NULL) {
+        prev_fairshares = fairshares;
+        fairshares = fairshares->next;
+
+        delete prev_fairshares->fstree;
+        free(prev_fairshares->name);
+        free(prev_fairshares);
+        prev_fairshares = NULL;
+    }
+}
+
+fairshare_trees *
+new_fairshares(char *name)
+{
+    fairshare_trees *fairshares = NULL;
+
+    if ((fairshares = (fairshare_trees*) malloc(sizeof(fairshare_trees))) == NULL) {
+        log_err(errno, __func__, MEM_ERR_MSG);
+        return NULL;
+    }
+
+    fairshares->fstree = NULL;
+    fairshares->name = NULL;
+    fairshares->next = NULL;
+    if (name != NULL)
+        fairshares->name = strdup(name);
+
+    return fairshares;
+}
+
+fairshare_trees *
+dup_fairshares(fairshare_trees *ofairshares)
+{
+    fairshare_trees *nfairshares = NULL;
+    fairshare_trees *prev_nfairshares = NULL;
+
+    while (ofairshares != NULL) {
+        prev_nfairshares = nfairshares;
+
+        nfairshares = new_fairshares(ofairshares->name);
+        nfairshares->fstree = new fairshare_head(*ofairshares->fstree);
+        nfairshares->next = prev_nfairshares;
+
+        ofairshares = ofairshares->next;
+    }
+
+    return nfairshares;
+}
+
+void
+add_fairshare_tree(char *name)
+{
+    struct fairshare_trees *fairshares;
+    struct fairshare_trees *prev_fairshares;
+    char filename[MAXPATHLEN + 1] = "";
+
+    if (fstrees == NULL) {
+        fstrees = new_fairshares(name);
+        fairshares = fstrees;
+    } else {
+        /* check if tree already exists */
+        fairshares = fstrees;
+        while (fairshares != NULL) {
+            if (name == NULL && fairshares->name == NULL)
+                return; /* NULL tree exists */
+
+            if (name != NULL && fairshares->name != NULL) {
+                if (!strcmp(name, fairshares->name)) {
+                    return; /* named tree exists */
+                }
+            }
+
+            prev_fairshares = fairshares;
+            fairshares = fairshares->next;
+        }
+
+        /* create new tree */
+        prev_fairshares->next = new_fairshares(name);
+        fairshares = prev_fairshares->next;
+    }
+
+    /* preload the static members to the fairshare tree */
+    fairshares->fstree = preload_tree();
+    if (fairshares->fstree != NULL) {
+
+        if (name == NULL)
+            snprintf(filename, sizeof(filename), "%s", RESGROUP_FILE);
+        else
+            snprintf(filename, sizeof(filename), "%s.%s", RESGROUP_FILE, name);
+
+        parse_group(filename, fairshares->fstree->root);
+
+        calc_fair_share_perc(fairshares->fstree->root->child, UNSPECIFIED);
+
+        if (name == NULL)
+            snprintf(filename, sizeof(filename), "%s", USAGE_FILE);
+        else
+            snprintf(filename, sizeof(filename), "%s.%s", USAGE_FILE, name);
+
+        read_usage(filename, 0, fairshares->fstree);
+
+        if (fairshares->fstree->last_decay == 0)
+            fairshares->fstree->last_decay = cstat.current_time;
+    }
+}

@@ -92,6 +92,7 @@ class resdef;
 struct event_list;
 struct status;
 class fairshare_head;
+struct fairshare_trees;
 struct node_scratch;
 struct te_list;
 struct node_bucket;
@@ -464,7 +465,7 @@ class server_info
 	 * the policy struct.  The policy struct will be passed around separately
 	 */
 	status *policy;
-	fairshare_head *fstree;	/* root of fairshare tree */
+	fairshare_trees *fstrees; /* fairshare trees */
 	resresv_set **equiv_classes;
 	node_bucket **buckets;		/* node bucket array */
 	node_info **unordered_nodes;
@@ -547,6 +548,7 @@ class queue_info
 	int num_topjobs;		/* current number of top jobs in this queue */
 	int backfill_depth;		/* total allowable topjobs in this queue*/
 	char *partition;		/* partition to which queue belongs to */
+	char *fairshare_tree;   /* name of fairshare tree*/
 
 	explicit queue_info(const char *);
 	queue_info(queue_info&, server_info *);
@@ -933,6 +935,14 @@ class fairshare_head
 	fairshare_head(fairshare_head&);
 	fairshare_head& operator=(fairshare_head&);
 	virtual ~fairshare_head();
+};
+
+/* fairshare trees structure */
+struct fairshare_trees
+{
+	char *name;                             /* name of the tree */
+	fairshare_head *fstree;              /* fairshare head structure */
+	struct fairshare_trees *next;
 };
 
 class group_info

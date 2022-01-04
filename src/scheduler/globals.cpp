@@ -188,5 +188,5 @@ int clust_secondary_sock = -1;
 /* a list of running jobs from the last scheduling cycle */
 std::vector<prev_job_info> last_running;
 
-/* fairshare tree */
-fairshare_head *fstree;
+/* fairshare trees */
+fairshare_trees *fstrees;

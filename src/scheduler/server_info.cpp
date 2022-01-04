@@ -210,7 +210,7 @@ query_server(status *pol, int pbs_sd)
 
 	if (query_server_dyn_res(sinfo) == -1) {
 		pbs_statfree(server);
-		sinfo->fstree = NULL;
+		sinfo->fstrees = NULL;
 		delete sinfo;
 		return NULL;
 	}
@@ -218,7 +218,7 @@ query_server(status *pol, int pbs_sd)
 	if (!dflt_sched && (sc_attrs.partition == NULL)) {
 		log_event(PBSEVENT_SCHED, PBS_EVENTCLASS_SERVER, LOG_ERR, __func__, "Scheduler does not contain a partition");
 		pbs_statfree(server);
-		sinfo->fstree = NULL;
+		sinfo->fstrees = NULL;
 		delete sinfo;
 		return NULL;
 	}
@@ -234,7 +234,7 @@ query_server(status *pol, int pbs_sd)
 	/* get the nodes, if any - NOTE: will set sinfo -> num_nodes */
 	if ((sinfo->nodes = query_nodes(pbs_sd, sinfo)) == NULL) {
 		pbs_statfree(server);
-		sinfo->fstree = NULL;
+		sinfo->fstrees = NULL;
 		delete sinfo;
 		pbs_statfree(bs_resvs);
 		return NULL;
@@ -249,7 +249,7 @@ query_server(status *pol, int pbs_sd)
 	sinfo->queues = query_queues(policy, pbs_sd, sinfo);
 	if (sinfo->queues.empty()) {
 		pbs_statfree(server);
-		sinfo->fstree = NULL;
+		sinfo->fstrees = NULL;
 		delete sinfo;
 		pbs_statfree(bs_resvs);
 		return NULL;
@@ -284,7 +284,7 @@ query_server(status *pol, int pbs_sd)
 		for (auto qinfo : sinfo->queues) {
 			auto ret_val = add_queue_to_list(&sinfo->queue_list, qinfo);
 			if (ret_val == 0) {
-				sinfo->fstree = NULL;
+				sinfo->fstrees = NULL;
 				delete sinfo;
 				pbs_statfree(bs_resvs);
 				return NULL;
@@ -297,7 +297,7 @@ query_server(status *pol, int pbs_sd)
 	pbs_statfree(bs_resvs);
 
 	if (create_server_arrays(sinfo) == 0) { /* bad stuff happened */
-		sinfo->fstree = NULL;
+		sinfo->fstrees = NULL;
 		delete sinfo;
 		return NULL;
 	}
@@ -331,7 +331,7 @@ query_server(status *pol, int pbs_sd)
 	sinfo->exiting_jobs = resource_resv_filter(sinfo->jobs,
 						   sinfo->sc.total, check_exit_job, NULL, 0);
 	if (sinfo->running_jobs == NULL || sinfo->exiting_jobs == NULL) {
-		sinfo->fstree = NULL;
+		sinfo->fstrees = NULL;
 		delete sinfo;
 		return NULL;
 	}
@@ -365,7 +365,7 @@ query_server(status *pol, int pbs_sd)
 			 */
 			if ((sinfo->running_jobs[i]->job->is_subjob) &&
 			    (associate_array_parent(sinfo->running_jobs[i], sinfo) == 1)) {
-				sinfo->fstree = NULL;
+				sinfo->fstrees = NULL;
 				delete sinfo;
 				return NULL;
 			}
@@ -376,7 +376,7 @@ query_server(status *pol, int pbs_sd)
 		for (i = 0; sinfo->running_jobs[i] != NULL; i++) {
 			if ((sinfo->running_jobs[i]->job->is_subjob) &&
 			    (associate_array_parent(sinfo->running_jobs[i], sinfo) == 1)) {
-				sinfo->fstree = NULL;
+				sinfo->fstrees = NULL;
 				delete sinfo;
 				return NULL;
 			}
@@ -401,7 +401,7 @@ query_server(status *pol, int pbs_sd)
 
 	sinfo->unordered_nodes = static_cast<node_info **>(malloc((sinfo->num_nodes + 1) * sizeof(node_info *)));
 	if (sinfo->unordered_nodes == NULL) {
-		sinfo->fstree = NULL;
+		sinfo->fstrees = NULL;
 		delete sinfo;
 		return NULL;
 	}
@@ -607,7 +607,7 @@ query_server_info(status *pol, struct batch_status *server)
 	 * copy in the global fairshare tree root.  Be careful to not free it
 	 * at the end of the cycle.
 	 */
-	sinfo->fstree = fstree;
+	sinfo->fstrees = fstrees;
 #ifdef NAS /* localmod 034 */
 	site_set_share_head(sinfo);
 #endif /* localmod 034 */
@@ -1000,8 +1000,8 @@ server_info::free_server_info()
 	free_event_list(calendar);
 	if (policy != NULL)
 		delete policy;
-	if (fstree != NULL)
-		delete fstree;
+	if (fstrees != NULL)
+		free_fairshares(fstrees);
 	lim_free_liminfo(liminfo);
 	liminfo = NULL;
 	free_queue_list(queue_list);
@@ -1133,7 +1133,7 @@ server_info::init_server_info()
 	nodesigs = NULL;
 	qrun_job = NULL;
 	policy = NULL;
-	fstree = NULL;
+	fstrees = NULL;
 	equiv_classes = NULL;
 	buckets = NULL;
 	unordered_nodes = NULL;
@@ -2005,8 +2005,12 @@ check_resv_running_on_node(resource_resv *resv, const void *arg)
 server_info::server_info(const server_info &osinfo)
 {
 	init_server_info();
-	if (osinfo.fstree != NULL)
-		fstree = new fairshare_head(*osinfo.fstree);
+	if (osinfo.fstrees != NULL) {
+		fstrees = dup_fairshares(osinfo.fstrees);
+		if (fstrees == NULL) {
+			throw sched_exception("Unable to duplicate fairshare trees", SCHD_ERROR);
+		}
+	}
 	has_mult_express = osinfo.has_mult_express;
 	has_soft_limit = osinfo.has_soft_limit;
 	has_hard_limit = osinfo.has_hard_limit;
@@ -2074,7 +2078,7 @@ server_info::server_info(const server_info &osinfo)
 		for (unsigned int i = 0; i < queues.size(); i++) {
 			auto ret_val = add_queue_to_list(&queue_list, queues[i]);
 			if (ret_val == 0) {
-				fstree = NULL;
+				fstrees = NULL;
 				free_server_info();
 				throw sched_exception("Unable to add queue to queue_list", SCHD_ERROR);
 			}

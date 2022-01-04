@@ -84,6 +84,7 @@
 #include "limits_if.h"
 #include "pbs_internal.h"
 #include "fifo.h"
+#include "fairshare.h"
 
 /**
  * @brief
@@ -407,6 +408,15 @@ query_queue_info(status *policy, struct batch_status *queue, server_info *sinfo)
 				}
 			}
 		}
+		else if (!strcmp(attrp->name, ATTR_fairshare_tree)) /* fairshare_tree */
+		{
+			if (qinfo->fairshare_tree != NULL)
+				free(qinfo->fairshare_tree);
+
+			qinfo->fairshare_tree = strdup(attrp->value);
+			/* add fairshare tree if not exists*/
+			add_fairshare_tree(qinfo->fairshare_tree);
+		}
 #ifdef NAS
 		/* localmod 046 */
 		else if (!strcmp(attrp->name, ATTR_maxstarve)) {
@@ -491,6 +501,8 @@ queue_info::queue_info(const char *qname) : name(qname)
 		is_nonprime_queue = true;
 	else
 		is_nonprime_queue = false;
+
+	fairshare_tree = NULL;
 }
 
 /**
@@ -688,6 +700,9 @@ queue_info::~queue_info()
 	free_node_partition(allpart);
 	lim_free_liminfo(liminfo);
 	free(partition);
+	if (fairshare_tree != NULL) {
+		free(fairshare_tree);
+	}
 }
 
 /**
@@ -807,6 +822,8 @@ queue_info::queue_info(queue_info &oqinfo, server_info *nsinfo) : name(oqinfo.na
 		nodes = NULL;
 
 	partition = string_dup(oqinfo.partition);
+
+	fairshare_tree = string_dup(oqinfo.fairshare_tree);
 }
 
 /**

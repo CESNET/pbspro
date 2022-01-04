@@ -99,6 +99,10 @@ main(int argc, char *argv[])
 	double val;
 	char *endp;
 	char *testp;
+	fairshare_head *fstree;
+	char fairshare_name[PBS_MAXSCHEDNAME + 1] = "";
+	char filename[MAXPATHLEN + 1] = "";
+	char filenamebak[MAXPATHLEN + 1] = "";
 
 	/* the real deal or output version and exit? */
 	PRINT_VERSION_AND_EXIT(argc, argv);
@@ -107,7 +111,7 @@ main(int argc, char *argv[])
 	if (pbs_loadconf(0) <= 0)
 		exit(1);
 
-	while ((c = getopt(argc, argv, "sgptdceI:-:")) != -1)
+	while ((c = getopt(argc, argv, "sgptdceI:n:-:")) != -1)
 		switch (c) {
 			case 'g':
 				flags = FS_GET;
@@ -132,6 +136,9 @@ main(int argc, char *argv[])
 				break;
 			case 'I':
 				snprintf(sched_name, sizeof(sched_name), "%s", optarg);
+				break;
+			case 'n':
+				snprintf(fairshare_name, sizeof(fairshare_name), "%s", optarg);
 				break;
 			case '-':
 				flag1 = 1;
@@ -206,14 +213,25 @@ main(int argc, char *argv[])
 		fprintf(stderr, "Error in preloading fairshare information\n");
 		return 1;
 	}
-	if (parse_group(RESGROUP_FILE, fstree->root) == 0)
+
+	if (*fairshare_name == '\0')
+		snprintf(filename, sizeof(filename), "%s", RESGROUP_FILE);
+	else
+		snprintf(filename, sizeof(filename), "%s.%s", RESGROUP_FILE, fairshare_name);
+
+	if (parse_group(filename, fstree->root) == 0)
 		return 1;
 
+	if (*fairshare_name == '\0')
+		snprintf(filename, sizeof(filename), "%s", USAGE_FILE);
+	else
+		snprintf(filename, sizeof(filename), "%s.%s", USAGE_FILE, fairshare_name);
+
 	if (flags & FS_TRIM_TREE) {
-		read_usage(USAGE_FILE, FS_TRIM, fstree);
+		read_usage(filename, FS_TRIM, fstree);
 		fstree->last_decay = time(NULL);
 	} else
-		read_usage(USAGE_FILE, 0, fstree);
+		read_usage(filename, 0, fstree);
 
 	calc_fair_share_perc(fstree->root->child, UNSPECIFIED);
 	calc_usage_factor(fstree);
@@ -266,10 +284,18 @@ main(int argc, char *argv[])
 	if (flags & FS_WRITE_FILE) {
 		FILE *fp;
 		/* make backup of database file */
-		remove(USAGE_FILE ".bak");
-		if (rename(USAGE_FILE, USAGE_FILE ".bak") < 0)
+		if (*fairshare_name == '\0') {
+			snprintf(filename, sizeof(filename), "%s", USAGE_FILE);
+			snprintf(filenamebak, sizeof(filename), "%s.bak", USAGE_FILE);
+		} else {
+			snprintf(filename, sizeof(filename), "%s.%s", USAGE_FILE, fairshare_name);
+			snprintf(filenamebak, sizeof(filename), "%s.%s.bak", USAGE_FILE, fairshare_name);
+		}
+
+		remove(filenamebak);
+		if (rename(filename, filenamebak) < 0)
 			perror("Could not backup usage database.");
-		write_usage(USAGE_FILE, fstree);
+		write_usage(filename, fstree);
 		if ((fp = fopen(USAGE_TOUCH, "w")) != NULL)
 			fclose(fp);
 	}

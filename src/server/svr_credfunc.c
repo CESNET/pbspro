@@ -101,7 +101,7 @@ svr_renew_job_cred(struct work_task *pwt)
 		} else {
 			log_eventf(PBSEVENT_ADMIN, PBS_EVENTCLASS_SERVER,
 				   LOG_NOTICE, msg_daemonname,
-				   "svr_renew_job_cred %s renew was successful", pjob->ji_qs.ji_jobid);
+				   "svr_renew_job_cred %s renewed credentials are ready, sending credentials to mom", pjob->ji_qs.ji_jobid);
 		}
 	} /* else job does not exists - job probably finished */
 }

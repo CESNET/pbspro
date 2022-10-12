@@ -145,6 +145,8 @@ extern char *msg_force_qsub_update;
 #define PBS_DPREFIX_DEFAULT "#PBS"
 #define PBS_O_ENV "PBS_O_" /* prefix for environment variables created by qsub */
 
+#define PBS_NO_INTERACTIVE_FLAG_FILE "/etc/pbsnointeractive"
+
 /* Warning/Error messages */
 #define INTER_GUI_WARN "qsub: only interactive jobs can have GUI\n"
 #define INTER_BLOCK_WARN "qsub (Warning) : setting \"block\" attribute as \"true\"" \
@@ -3283,6 +3285,11 @@ main(int argc, char **argv, char **envp) /* qsub */
 	/* Process special arguments */
 	command_flag = process_special_args(argc, argv, script);
 	fix_path(script, 1);
+
+	if (Interact_opt != FALSE && access(PBS_NO_INTERACTIVE_FLAG_FILE, F_OK) == 0) {
+		fprintf(stderr, "qsub:\tinteractive jobs are disabled on this client\n");
+		exit_qsub(1);
+	}
 
 	if (command_flag == 0)
 		/* Read the job script from a file or stdin */

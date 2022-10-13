@@ -541,7 +541,7 @@ post_doq(struct work_task *pwt)
 				   "%s %s", preq->rq_ind.rq_register.rq_parent, msg_histdepend);
 		else
 			log_eventf(PBSEVENT_JOB, PBS_EVENTCLASS_JOB, LOG_INFO, jobid,
-				   "%s%s", msg_regrej, preq->rq_ind.rq_register.rq_parent);
+				   "%s%s reply code=%d", msg_regrej, preq->rq_ind.rq_register.rq_parent, preq->rq_reply.brp_code);
 
 		pjob = find_job(jobid);
 		if ((msg = pbse_to_txt(preq->rq_reply.brp_code)) != NULL) {

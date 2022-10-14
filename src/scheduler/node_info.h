@@ -72,6 +72,8 @@ void free_nodes(node_info **ninfo_arr);
  */
 int set_node_info_state(node_info *ninfo, const char *state);
 
+int set_node_info_state_aux(node_info *ninfo, const char *state);
+
 /*
  *      remove_node_state
  */
@@ -81,6 +83,8 @@ int remove_node_state(node_info *ninfo, const char *state);
  *      add_node_state
  */
 int add_node_state(node_info *ninfo, const char *state);
+
+int add_node_state_aux(node_info *ninfo, const char *state);
 
 /*
  *      node_filter - filter a node array and return a new filterd array

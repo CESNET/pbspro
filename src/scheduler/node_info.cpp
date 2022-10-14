@@ -258,6 +258,7 @@ query_nodes(int pbs_sd, server_info *sinfo)
 
 	if (attrib == NULL) {
 		const char *nodeattrs[] = {
+			ATTR_NODE_state_aux, /* state_aux must be before state, so it is obtained after state*/
 			ATTR_NODE_state,
 			ATTR_NODE_Mom,
 			ATTR_NODE_Port,
@@ -450,6 +451,9 @@ query_node_info(struct batch_status *node, server_info *sinfo)
 		/* Node State... i.e. offline down free etc */
 		if (!strcmp(attrp->name, ATTR_NODE_state))
 			set_node_info_state(ninfo, attrp->value);
+
+		else if (!strcmp(attrp->name, ATTR_NODE_state_aux))
+			set_node_info_state_aux(ninfo, attrp->value);
 
 		/* Host name */
 		else if (!strcmp(attrp->name, ATTR_NODE_Mom)) {
@@ -865,6 +869,36 @@ set_node_info_state(node_info *ninfo, const char *state)
 	return 1;
 }
 
+int
+set_node_info_state_aux(node_info *ninfo, const char *state)
+{
+	if (ninfo != NULL && state != NULL) {
+		char statebuf[256]; /* used to strtok() node states */
+		char *tok;	    /* used with strtok() */
+		char *saveptr;
+
+		if (ninfo->is_down || ninfo->is_offline || ninfo->is_unknown)
+			return 0;
+
+		strcpy(statebuf, state);
+		tok = strtok_r(statebuf, ",", &saveptr);
+
+		while (tok != NULL) {
+			while (isspace((int) *tok))
+				tok++;
+
+			if (add_node_state_aux(ninfo, tok) == 1)
+				log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_NODE, LOG_INFO,
+					   ninfo->name, "Unknown Node State aux: %s", tok);
+
+			tok = strtok_r(NULL, ",", &saveptr);
+		}
+		return 0;
+	}
+
+	return 1;
+}
+
 /**
  * @brief
  * 		Remove a node state
@@ -1001,6 +1035,56 @@ add_node_state(node_info *ninfo, const char *state)
 		ninfo->nscr |= NSCR_CYCLE_INELIGIBLE;
 	} else
 		ninfo->nscr &= ~NSCR_CYCLE_INELIGIBLE;
+
+	return 0;
+}
+
+int
+add_node_state_aux(node_info *ninfo, const char *state)
+{
+	if (ninfo == NULL)
+		return 1;
+
+	if (!strcmp(state, ND_down))
+		ninfo->is_down = 1;
+	else if (!strcmp(state, ND_free)) {
+		return 0;
+	} else if (!strcmp(state, ND_offline))
+		ninfo->is_offline = 1;
+	else if (!strcmp(state, ND_state_unknown) || !strcmp(state, ND_unresolvable))
+		ninfo->is_unknown = 1;
+	else if (!strcmp(state, ND_job_exclusive)) {
+		ninfo->is_job_exclusive = 1;
+		ninfo->is_exclusive = 1;
+	} else if (!strcmp(state, ND_resv_exclusive)) {
+		ninfo->is_resv_exclusive = 1;
+		ninfo->is_exclusive = 1;
+	} else if (!strcmp(state, ND_job_sharing))
+		ninfo->is_sharing = 1;
+	else if (!strcmp(state, ND_busy))
+		ninfo->is_busy = 1;
+	else if (!strcmp(state, ND_jobbusy))
+		ninfo->is_job_busy = 1;
+	else if (!strcmp(state, ND_Stale))
+		ninfo->is_stale = 1;
+	else if (!strcmp(state, ND_prov))
+		ninfo->is_provisioning = 1;
+	else if (!strcmp(state, ND_wait_prov))
+		ninfo->is_provisioning = 1;
+	else if (!strcmp(state, ND_maintenance))
+		ninfo->is_maintenance = 1;
+	else if (!strcmp(state, ND_sleep)) {
+		if (ninfo->server->power_provisioning)
+			ninfo->is_sleeping = 1;
+	} else {
+		log_eventf(PBSEVENT_SCHED, PBS_EVENTCLASS_NODE, LOG_INFO,
+			   ninfo->name, "Unknown Node State aux: %s on add operation", state);
+		return 1;
+	}
+
+	/* if node is free, returned() called before */
+	ninfo->is_free = 0;
+	ninfo->nscr |= NSCR_CYCLE_INELIGIBLE;
 
 	return 0;
 }

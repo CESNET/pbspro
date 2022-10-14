@@ -202,6 +202,23 @@
       </member_verify_function>
    </attributes>
    <attributes>
+      <member_index>ND_ATR_state_aux</member_index>
+      <member_name>ATTR_NODE_state_aux</member_name>
+      <member_at_decode>decode_state</member_at_decode>
+      <member_at_encode>encode_state</member_at_encode>
+      <member_at_set>set_node_state</member_at_set>
+      <member_at_comp>comp_null</member_at_comp>
+      <member_at_free>free_null</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>NO_USER_SET</member_at_flags>
+      <member_at_type>ATR_TYPE_SHORT</member_at_type>
+      <member_at_parent>PARENT_TYPE_NODE</member_at_parent>
+      <member_verify_function>
+         <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
+   </attributes>
+   <attributes>
       <member_index>ND_ATR_pcpus</member_index>
       <member_name>ATTR_NODE_pcpus</member_name>
       <member_at_decode>decode_l</member_at_decode>
@@ -439,6 +456,23 @@
 #endif
       </member_at_action>
       <member_at_flags>NO_USER_SET | ATR_DFLAG_NOSAVM</member_at_flags>
+      <member_at_type>ATR_TYPE_STR</member_at_type>
+      <member_at_parent>PARENT_TYPE_NODE</member_at_parent>
+      <member_verify_function>
+         <ECL>NULL_VERIFY_DATATYPE_FUNC</ECL>
+         <ECL>NULL_VERIFY_VALUE_FUNC</ECL>
+      </member_verify_function>
+   </attributes>
+   <attributes>
+      <member_index>ND_ATR_Comment_aux</member_index>
+      <member_name>ATTR_comment_aux</member_name>
+      <member_at_decode>decode_str</member_at_decode>
+      <member_at_encode>encode_str</member_at_encode>
+      <member_at_set>set_str</member_at_set>
+      <member_at_comp>comp_str</member_at_comp>
+      <member_at_free>free_str</member_at_free>
+      <member_at_action>NULL_FUNC</member_at_action>
+      <member_at_flags>NO_USER_SET</member_at_flags>
       <member_at_type>ATR_TYPE_STR</member_at_type>
       <member_at_parent>PARENT_TYPE_NODE</member_at_parent>
       <member_verify_function>

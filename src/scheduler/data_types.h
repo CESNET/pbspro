@@ -843,6 +843,8 @@ class resource_type
 	bool is_float:1;
 	bool is_size:1;	/* all sizes are converted into kb */
 	bool is_time:1;
+
+	bool is_atleast:1; /* comparable resource - at least this value */
 	resource_type();
 };
 

@@ -438,6 +438,8 @@ parse_resc_flags(char *val, int *flag_ir_p, int *resc_flag_p)
 				     ATR_DFLAG_OPWR |
 				     ATR_DFLAG_MGRD | ATR_DFLAG_MGWR;
 			flag_ir++;
+		} else if (*val == 'l') {
+			resc_flag |= ATR_DFLAG_ATLEAST;
 		} else
 			return -1;
 		val++;

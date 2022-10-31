@@ -1392,7 +1392,7 @@ compare_resource_req(resource_req *req1, resource_req *req2)
 	else if (req1 == NULL || req2 == NULL)
 		return 0;
 
-	if (req1->type.is_consumable || req1->type.is_boolean)
+	if (req1->type.is_consumable || req1->type.is_boolean || req1->type.is_atleast)
 		return (req1->amount == req2->amount);
 
 	if (req1->type.is_string)
@@ -2243,6 +2243,7 @@ compare_res_to_str(schd_resource *res, char *str, enum resval_cmpflag cmpflag)
 int
 compare_non_consumable(schd_resource *res, resource_req *req)
 {
+	sch_resource_t avail;			/* amount of available resource */
 
 	if (res == NULL && req == NULL)
 		return 0;
@@ -2259,6 +2260,20 @@ compare_non_consumable(schd_resource *res, resource_req *req)
 
 		if (res->type.is_string && res->str_avail == NULL)
 			return 0;
+	}
+
+	if (res->type.is_atleast) {
+		avail = res->avail;
+
+		if (avail == SCHD_INFINITY_RES)
+			avail = 0;
+
+		if (avail != SCHD_INFINITY_RES && req->amount != 0) {
+			if (avail < req->amount) {
+				return 0;
+			}
+			return 1;
+		}
 	}
 
 	/* successful boolean match: (req = request res = resource on object)

@@ -1199,6 +1199,9 @@ complete_running(job *jobp)
 	else
 		account_jobstr(jobp, PBS_ACCT_RUN);
 
+	/* save finished job */
+	job_save_db(jobp);
+
 	/* if any dependencies, see if action required */
 
 	if (is_jattr_set(jobp, JOB_ATR_depend))

@@ -947,6 +947,16 @@ main_sched_loop(status *policy, int sd, server_info *sinfo, schd_error **rerr)
 						  njob->name, "Error in add_job_to_calendar");
 				}
 				/* else cal_rc == 0: failed to add to calendar - continue on */
+			} else {
+				if (njob->job->est_start_time != -1 || njob->job->est_execvnode != 0x0) {
+					struct attrl attr = {0};
+					attr.name = const_cast<char *>(ATTR_estimated);
+					attr.resource = const_cast<char *>("exec_vnode");
+					attr.value = "";
+
+					update_job_attr(sd, njob, ATTR_estimated, "start_time",
+						"", &attr, UPDATE_NOW);
+				}
 			}
 
 			/* Need to set preemption status so that soft limits can be checked

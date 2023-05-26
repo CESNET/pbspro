@@ -46,32 +46,24 @@ AC_DEFUN([PBS_AC_WITH_PYTHON],
   AS_IF([test "x$with_python" != "x"],
     [PYTHON="$with_python/bin/python3"]
   )
-  AM_PATH_PYTHON([3.5])
-  AS_IF([test "$PYTHON_VERSION" != "3.5" \
-          -a "$PYTHON_VERSION" != "3.6" \
-          -a "$PYTHON_VERSION" != "3.7" \
-          -a "$PYTHON_VERSION" != "3.8" \
-          -a "$PYTHON_VERSION" != "3.9" ],
-    AC_MSG_ERROR([Python must be version 3.5, 3.6, 3.7, 3.8 or 3.9]))
-  [PYTHON_INCLUDES=`$PYTHON ${srcdir}/buildutils/python-autoconf.py --includes`]
-  AC_SUBST(PYTHON_INCLUDES)
-  [PYTHON_CFLAGS=`$PYTHON ${srcdir}/buildutils/python-autoconf.py --cflags`]
-  AC_SUBST(PYTHON_CFLAGS)
-  [PYTHON_LDFLAGS=`$PYTHON ${srcdir}/buildutils/python-autoconf.py --ldflags`]
-  AC_SUBST(PYTHON_LDFLAGS)
-  [PYTHON_LIBS=`$PYTHON ${srcdir}/buildutils/python-autoconf.py --libs`]
-  AC_SUBST(PYTHON_LIBS)
-  [PBS_PYTHON_DESTLIB="python/altair"]
-  AC_SUBST(PBS_PYTHON_DESTLIB)
-  [PYTHON_STD_DESTLIB="python/python${PYTHON_VERSION}"]
-  AC_SUBST(PYTHON_STD_DESTLIB)
-  [PYTHON_STD_DESTSHAREDLIB="python/python${PYTHON_VERSION}/shared"]
-  AC_SUBST(PYTHON_STD_DESTSHAREDLIB)
-  [PYTHON_PBS_IFL_OBJ="pbs_ifl_wrap.o"]
-  AC_SUBST(PYTHON_PBS_IFL_OBJ)
-  AC_DEFINE([PYTHON], [], [Defined when Python is available])
-  AS_IF([test "x$with_python" == "x"],
-    [AC_DEFINE_UNQUOTED([SYSTEM_PYTHON_PATH], ["$PYTHON"], [Python executable path])]
-  )
+  AM_PATH_PYTHON([3.6])
+  [PYTHON_CONFIG="$PYTHON-config"]
+  [python_major_version=`echo $PYTHON_VERSION | sed -e 's/\..*$//'`]
+  [python_minor_version=`echo $PYTHON_VERSION | sed -e 's/^[^.]*\.//'`]
+  AS_IF([test $python_major_version -eq 3],
+  [
+    python_config_embed=""
+    AS_IF([test $python_minor_version -ge 8], [python_config_embed="--embed"])
+    [PYTHON_INCLUDES=`$PYTHON_CONFIG --includes ${python_config_embed}`]
+    AC_SUBST(PYTHON_INCLUDES)
+    [PYTHON_CFLAGS=`$PYTHON_CONFIG --cflags ${python_config_embed}`]
+    AC_SUBST(PYTHON_CFLAGS)
+    [PYTHON_LDFLAGS=`$PYTHON_CONFIG --ldflags ${python_config_embed}`]
+    AC_SUBST(PYTHON_LDFLAGS)
+    [PYTHON_LIBS=`$PYTHON_CONFIG --libs ${python_config_embed}`]
+    AC_SUBST(PYTHON_LIBS)
+    AC_DEFINE([PYTHON], [], [Defined when Python is available])
+    AC_DEFINE_UNQUOTED([PYTHON_BIN_PATH], ["$PYTHON"], [Python executable path])
+  ],
+  [AC_MSG_ERROR([Python version 3 is required.])])
 ])
-

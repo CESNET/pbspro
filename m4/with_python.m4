@@ -62,6 +62,8 @@ AC_DEFUN([PBS_AC_WITH_PYTHON],
     AC_SUBST(PYTHON_LDFLAGS)
     [PYTHON_LIBS=`$PYTHON_CONFIG --libs ${python_config_embed}`]
     AC_SUBST(PYTHON_LIBS)
+    [PBS_PYTHON_DESTLIB="python/altair"]
+    AC_SUBST(PBS_PYTHON_DESTLIB)
     AC_DEFINE([PYTHON], [], [Defined when Python is available])
     AC_DEFINE_UNQUOTED([PYTHON_BIN_PATH], ["$PYTHON"], [Python executable path])
   ],

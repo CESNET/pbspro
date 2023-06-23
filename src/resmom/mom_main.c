@@ -7744,14 +7744,27 @@ main(int argc, char *argv[])
 			exit(1);
 		}
 
-		if (fork() > 0)
+		if (fork() > 0) {
+			sigset_t waitset;
+			int sigfromchild;
+			sigemptyset(&waitset);
+			sigaddset(&waitset, SIGUSR1);
+			sigprocmask(SIG_BLOCK, &waitset, NULL);
+
+			/* wait for child to write the pid file */
+			sigwait(&waitset, &sigfromchild);
 			return (0); /* parent goes away */
+		}
 
 		if ((setsid() == -1) && (errno != ENOSYS)) {
+			kill(getppid(), SIGUSR1); // tell parent to exit
+
 			log_err(errno, msg_daemonname, "setsid failed");
 			return (2);
 		}
 		if (lock_file(lockfds, F_WRLCK, "mom.lock", 1, NULL, 0)) { /* lock out other MOMs */
+			kill(getppid(), SIGUSR1); // tell parent to exit
+
 			log_errf(errno, msg_daemonname, "pbs_mom: another mom running");
 			fprintf(stderr, "%s\n", "pbs_mom: another mom running");
 			exit(1);
@@ -7789,6 +7802,11 @@ main(int argc, char *argv[])
 		}
 	}
 #endif /* _POSIX_MEMLOCK */
+
+#ifndef	DEBUG
+	if (stalone != 1)
+		kill(getppid(), SIGUSR1); // tell parent pid is written
+#endif	/* DEBUG */
 
 	sigemptyset(&allsigs);
 	sigaddset(&allsigs, SIGHUP);  /* remember to block these */

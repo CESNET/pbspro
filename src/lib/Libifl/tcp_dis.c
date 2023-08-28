@@ -954,7 +954,7 @@ void DIS_tcp_release(int fd)
 	rc = pbs_client_thread_lock_tcp();
 	assert(rc == 0);
 
-	if (tcparray != NULL && tcparray[fd] != NULL) {
+	if (fd >= 0 && fd < tcparraymax && tcparray != NULL && tcparray[fd] != NULL) {
 		pbs_gss_free_gss_extra(tcparray[fd]->extra);
 		tcparray[fd]->extra = NULL;
 

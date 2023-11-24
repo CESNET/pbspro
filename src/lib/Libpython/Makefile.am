@@ -68,6 +68,9 @@ CLEANFILES = \
 
 pbs_ifl_wrap.c: $(top_srcdir)/src/lib/Libifl/pbs_ifl_wrap.c
 	echo '%module pbs_ifl' > pbs_ifl.i ; \
+	echo '%begin %{' >> pbs_ifl.i ; \
+	echo '#include <pbs_python_private.h>' >> pbs_ifl.i ; \
+	echo '%}' >> pbs_ifl.i ; \
 	echo '%{' >> pbs_ifl.i ; \
 	echo '#include "pbs_ifl.h"' >> pbs_ifl.i ; \
 	echo '%}' >> pbs_ifl.i ; \

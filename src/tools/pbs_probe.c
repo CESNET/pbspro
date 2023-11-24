@@ -77,6 +77,7 @@
  *
  */
 
+#include <pbs_python_private.h>
 #include <Python.h>
 #include <sys/types.h>
 #include <sys/stat.h>

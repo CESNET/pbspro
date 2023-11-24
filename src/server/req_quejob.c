@@ -755,6 +755,28 @@ req_quejob(struct batch_request *preq)
 				return;
 			}
 		}
+	} else if (is_sattr_set(SVR_ATR_krb_default_realm)) {
+		char acl_krb_default[PBS_MAXUSER + PBS_MAXHOSTNAME + 1];
+		int set_default_realm = TRUE;
+
+		(void) strcpy(acl_krb_default, preq->rq_user);
+		(void) strcat(acl_krb_default, "@");
+		(void) strcat(acl_krb_default, preq->rq_host);
+
+		if (get_sattr_long(SVR_ATR_acl_krb_default_realm_enable)) {
+			set_default_realm = FALSE;
+			if (is_sattr_set(SVR_ATR_acl_krb_default_realm) && acl_check(get_sattr(SVR_ATR_acl_krb_default_realm), acl_krb_default, ACL_User)) {
+				set_default_realm = TRUE;
+			}
+		}
+
+		if (set_default_realm) {
+			(void) strcpy(acl_krb_default, preq->rq_user);
+			(void) strcat(acl_krb_default, "@");
+			(void) strcat(acl_krb_default, get_sattr_str(SVR_ATR_krb_default_realm));
+
+			set_jattr_str_slim(pj, JOB_ATR_cred_id, acl_krb_default, NULL);
+		}
 	}
 #endif
 

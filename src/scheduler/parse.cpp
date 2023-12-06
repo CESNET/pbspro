@@ -128,7 +128,10 @@ config::config() : fairshare_res("cput"), fairshare_ent("euser")
 	min_intrptd_cycle_length = 0; /* min length of interrupted cycle */
 	max_intrptd_cycles = 0;	      /* max consecutive interrupted cycles */
 #endif
-
+/* localmod 030 metacentrum start */
+	min_intrptd_cycle_length = 0; /* min length of interrupted cycle */
+	max_intrptd_cycles = 0;	      /* max consecutive interrupted cycles */
+/* localmod 030 metacentrum end */
 	/* selection criteria of nodes for provisioning */
 	provision_policy = AGGRESSIVE_PROVISION;
 }
@@ -180,7 +183,10 @@ parse_config(const char *fname)
 	tmpconf.min_intrptd_cycle_length = 30;
 	tmpconf.max_intrptd_cycles = 1;
 #endif
-
+/* localmod 030 metacentrum start */
+	tmpconf.min_intrptd_cycle_length = 30;
+	tmpconf.max_intrptd_cycles = 1;
+/* localmod 030 metacentrum end */
 	/* auto-set any internally needed config values before reading the file */
 	while (pbs_fgets_extend(&buf, &buf_size, fp) != NULL) {
 		bool error = false;
@@ -614,6 +620,13 @@ parse_config(const char *fname)
 					tmpconf.max_intrptd_cycles = num;
 				}
 #endif
+/* localmod 030 metacentrum start */
+				else if (!strcmp(config_name, PARSE_MIN_INTERRUPTED_CYCLE_LENGTH)) {
+					tmpconf.min_intrptd_cycle_length = num;
+				} else if (!strcmp(config_name, PARSE_MAX_CONS_INTERRUPTED_CYCLES)) {
+					tmpconf.max_intrptd_cycles = num;
+				}
+/* localmod 030 metacentrum end */
 				else {
 					pbs_strncpy(errbuf, "Unknown config parameter", sizeof(errbuf));
 					error = true;

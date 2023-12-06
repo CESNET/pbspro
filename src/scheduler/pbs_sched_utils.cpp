@@ -119,6 +119,10 @@ time_t segv_last_time;
 extern int do_soft_cycle_interrupt;
 extern int do_hard_cycle_interrupt;
 #endif /* localmod 030 */
+/* localmod 030 metacentrum start */
+extern int do_soft_cycle_interrupt;
+extern int do_hard_cycle_interrupt;
+/* localmod 030 metacentrum end */
 
 extern char *msg_startup1;
 
@@ -415,6 +419,31 @@ hard_cycle_interrupt(int sig)
 	do_hard_cycle_interrupt = 1;
 }
 #endif /* localmod 030 */
+
+/* localmod 030 metacentrum start */
+/**
+ * @brief
+ * 		make soft cycle interrupt active
+ *
+ * @param[in]	sig	-	signal
+ */
+void
+soft_cycle_interrupt(int sig)
+{
+	do_soft_cycle_interrupt = 1;
+}
+/**
+ * @brief
+ * 		make hard cycle interrupt active
+ *
+ * @param[in]	sig	-	signal
+ */
+void
+hard_cycle_interrupt(int sig)
+{
+	do_hard_cycle_interrupt = 1;
+}
+/* localmod 030 metacentrum end */
 
 /**
  * @brief
@@ -1020,6 +1049,15 @@ sched_main(int argc, char *argv[], schedule_func sched_ptr)
 					       /* SIGUSR2                 */
 	sigaction(SIGUSR2, &act, NULL);
 #endif /* localmod 030 */
+/* localmod 030 metacentrum start */
+	act.sa_handler = soft_cycle_interrupt; /* do a cycle interrupt on */
+					       /* SIGUSR1, subject to     */
+					       /* configurable parameters */
+	sigaction(SIGUSR1, &act, NULL);
+	act.sa_handler = hard_cycle_interrupt; /* do a cycle interrupt on */
+					       /* SIGUSR2                 */
+	sigaction(SIGUSR2, &act, NULL);
+/* localmod 030 metacentrum end */
 
 	act.sa_handler = die; /* bite the biscuit for all following */
 	sigaction(SIGINT, &act, NULL);

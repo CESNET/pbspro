@@ -111,6 +111,13 @@
 #ifdef NAS /* localmod 030 */
 #include "site_code.h"
 #endif /* localmod 030 */
+/* localmod 030 metacentrum start */
+extern int check_for_cycle_interrupt(int);
+extern int do_soft_cycle_interrupt;
+extern int do_hard_cycle_interrupt;
+extern int consecutive_interrupted_cycles;
+extern time_t interrupted_cycle_start_time;
+/* localmod 030 metacentrum end */
 
 /** @struct	policy_change_func_name
  *
@@ -768,13 +775,21 @@ calc_run_time(const std::string &name, server_info *sinfo, int flags)
 			break;
 		}
 #endif /* localmod 030 */
+/* localmod 030 metacentrum start */
+		if (check_for_cycle_interrupt(0)) {
+			break;
+		}
+/* localmod 030 metacentrum end */
 	} while (nspec_arr.empty() && !(ret & (TIMED_NOEVENT | TIMED_ERROR)));
 
 #ifdef NAS /* localmod 030 */
-	if (check_for_cycle_interrupt(0) || (ret & TIMED_ERROR)) {
+//	if (check_for_cycle_interrupt(0) || (ret & TIMED_ERROR)) {
 #else
-	if ((ret & TIMED_ERROR)) {
+//	if ((ret & TIMED_ERROR)) {
 #endif /* localmod 030 */
+/* localmod 030 metacentrum start */
+	if (check_for_cycle_interrupt(0) || (ret & TIMED_ERROR)) {
+/* localmod 030 metacentrum end */
 		free_schd_error(err);
 		free_nspecs(nspec_arr);
 		return -1;

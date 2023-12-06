@@ -156,6 +156,11 @@
 #define PARSE_MAX_CONS_INTERRUPTED_CYCLES "max_cons_interrupted_cycles"
 #endif
 
+/* localmod 030 metacentrum start */
+#define PARSE_MIN_INTERRUPTED_CYCLE_LENGTH "min_interrupted_cycle_length"
+#define PARSE_MAX_CONS_INTERRUPTED_CYCLES "max_cons_interrupted_cycles"
+/* localmod 030 metacentrum end */
+
 /* undocumented */
 #define PARSE_MAX_JOB_CHECK "max_job_check"
 #define PARSE_PREEMPT_ATTEMPTS "preempt_attempts"

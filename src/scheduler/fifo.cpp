@@ -102,6 +102,14 @@
 #include "site_code.h"
 #endif
 
+/* localmod 030 metacentrum start */
+extern int check_for_cycle_interrupt(int);
+extern int do_soft_cycle_interrupt;
+extern int do_hard_cycle_interrupt;
+extern int consecutive_interrupted_cycles;
+extern time_t interrupted_cycle_start_time;
+/* localmod 030 metacentrum end */
+
 /**
  * @brief
  * 		initialize conf struct and parse conf files
@@ -601,6 +609,11 @@ scheduling_cycle(int sd, const sched_cmd *cmd)
 	do_soft_cycle_interrupt = 0;
 	do_hard_cycle_interrupt = 0;
 #endif /* localmod 030 */
+	/* localmod 030 metacentrum start */
+	do_soft_cycle_interrupt = 0;
+	do_hard_cycle_interrupt = 0;
+	/* localmod 030 metacentrum end */
+
 	/* create the server / queue / job / node structures */
 	if ((sinfo = query_server(&cstat, sd)) == NULL) {
 		log_event(PBSEVENT_SYSTEM, PBS_EVENTCLASS_SERVER, LOG_NOTICE,
@@ -826,6 +839,10 @@ main_sched_loop(status *policy, int sd, server_info *sinfo, schd_error **rerr)
 	/* localmod 064 */
 	site_list_jobs(sinfo, sinfo->jobs);
 #endif
+	/* localmod 030 metacentrum start */
+	interrupted_cycle_start_time = cycle_start_time;
+	/* localmod 030 metacentrum end */
+
 	for (i = 0; !end_cycle &&
 		    (njob = next_job(policy, sinfo, sort_again)) != NULL;
 	     i++) {
@@ -838,7 +855,11 @@ main_sched_loop(status *policy, int sd, server_info *sinfo, schd_error **rerr)
 			break;
 		}
 #endif /* localmod 030 */
-
+		/* localmod 030 metacentrum start */
+		if (check_for_cycle_interrupt(1)) {
+			break;
+		}
+		/* localmod 030 metacentrum end */
 		rc = 0;
 		comment[0] = '\0';
 		log_msg[0] = '\0';
@@ -1065,6 +1086,13 @@ main_sched_loop(status *policy, int sd, server_info *sinfo, schd_error **rerr)
 			consecutive_interrupted_cycles = 0;
 		}
 #endif /* localmod 030 */
+		/* localmod 030 metacentrum start */
+		if (check_for_cycle_interrupt(0)) {
+			consecutive_interrupted_cycles++;
+		} else {
+			consecutive_interrupted_cycles = 0;
+		}
+		/* localmod 030 metacentrum end */
 
 		/* send any attribute updates to server that we've collected */
 		send_job_updates(sd, njob);

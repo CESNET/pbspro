@@ -119,6 +119,8 @@ extern int clust_secondary_sock;
 /* a list of running jobs from the last scheduling cycle */
 extern std::vector<prev_job_info> last_running;
 
+extern schd_resource *allstrres;
+
 /**
  * @brief
  * It is used as a placeholder to store aoe name. This aoe name will be

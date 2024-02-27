@@ -162,6 +162,8 @@ std::unordered_set<resdef *> consres;
 /* boolean resources*/
 std::unordered_set<resdef *> boolres;
 
+schd_resource *allstrres = NULL;
+
 /* AOE name used to compare nodes, free when exit cycle */
 char *cmp_aoename = NULL;
 

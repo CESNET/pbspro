@@ -297,6 +297,8 @@ momvmap_t **mommap_array = NULL;
 int mommap_array_size = 0;
 unsigned long QA_testing = 0;
 
+int enforce_on_exclhost = TRUE;
+
 long joinjob_alarm_time = -1;
 long job_launch_delay = -1; /* # of seconds to delay job launch due to pipe reads (pipe read timeout)  */
 int update_joinjob_alarm_time = 0;
@@ -491,6 +493,7 @@ static handler_ret_t set_reject_root_scripts(char *);
 static handler_ret_t set_report_hook_checksums(char *);
 static handler_ret_t setmaxload(char *);
 static handler_ret_t set_max_poll_downtime(char *);
+static handler_ret_t set_enforce_on_exclhost(char *);
 static handler_ret_t usecp(char *);
 static handler_ret_t wallmult(char *);
 #ifdef NAS /* localmod 015 */
@@ -563,6 +566,7 @@ static struct specials {
 	{"wallmult", wallmult},
 	{"reject_root_scripts", set_reject_root_scripts},
 	{"report_hook_checksums", set_report_hook_checksums},
+	{ "enforce_on_exclhost", set_enforce_on_exclhost },
 	{NULL, NULL}};
 
 static struct specials addspecial[] = {
@@ -1685,6 +1689,23 @@ static handler_ret_t
 set_report_hook_checksums(char *value)
 {
 	return (set_boolean(__func__, value, &report_hook_checksums));
+}
+
+/**
+ * @brief
+ *	Set the configuration flag that tells the mom whether to enforce limits
+ *	on excl jobs.
+ *
+ * @param[in] value - log value
+ *
+ * @retval 0 failure
+ * @retval 1 success
+ *
+ */
+static handler_ret_t
+set_enforce_on_exclhost(char *value)
+{
+	return (set_boolean(__func__, value, &enforce_on_exclhost));
 }
 
 /**
@@ -6706,7 +6727,7 @@ job *pjob;
  *
  */
 int
-mom_over_limit(job *pjob)
+mom_over_limit(job *pjob, int enforce_job_wide)
 {
 	char *pname;
 	int retval;
@@ -6726,7 +6747,7 @@ mom_over_limit(job *pjob)
 	/* check ncpus usage locally */
 
 	value = pjob->ji_hosts[pjob->ji_nodeid].hn_nrlimit.rl_ncpus;
-	if (value != 0) { /* ignore cpuusage check when ncpus=0 */
+	if (value != 0 && enforce_job_wide) { /* ignore cpuusage check when ncpus=0 */
 		attribute *at;
 		resource *prescpup;
 		resource *prescput;
@@ -6797,7 +6818,7 @@ mom_over_limit(job *pjob)
 
 	/* check vmem useage locally */
 	llvalue = pjob->ji_hosts[pjob->ji_nodeid].hn_nrlimit.rl_vmem << 10;
-	if (llvalue != 0) {
+	if (llvalue != 0 && enforce_job_wide) {
 		rd = &svr_resc_def[RESC_VMEM];
 		used = find_resc_entry(uattr, rd);
 		retval = local_getsize(used, &llnum);
@@ -6812,7 +6833,7 @@ mom_over_limit(job *pjob)
 
 	/* check mem usage locally */
 	llvalue = pjob->ji_hosts[pjob->ji_nodeid].hn_nrlimit.rl_mem << 10;
-	if (llvalue != 0) {
+	if (llvalue != 0 && enforce_job_wide) {
 		rd = &svr_resc_def[RESC_MEM];
 		used = find_resc_entry(uattr, rd);
 		retval = local_getsize(used, &llnum);
@@ -6931,8 +6952,27 @@ job_over_limit(job *pjob, int recover)
 	int i;
 	u_long limit;
 	char *units;
+	static	resource_def	*prsdef = NULL;
+	attribute		*patresc = NULL;/* ptr to job/resv resource_list */
+	resource		*pplace = NULL;
+	int			enforce_job_wide = TRUE;
 
-	if (mom_over_limit(pjob)) {		     /* check my own limits */
+	/*
+	** For enforce_on_exclhost == FALSE:
+	** Here we check to see if the job has the node "exclhost".
+	** If so, we skip enforcement on some resources.
+	*/
+	if (enforce_on_exclhost == FALSE) {
+		prsdef = find_resc_def(svr_resc_def, "place");
+		patresc = &pjob->ji_wattr[(int)JOB_ATR_resource];
+		pplace = find_resc_entry(patresc, prsdef);
+		if (pplace && pplace->rs_value.at_val.at_str) {
+			if (strstr(pplace->rs_value.at_val.at_str, "exclhost"))
+				enforce_job_wide = FALSE;
+		}
+	}
+
+	if (mom_over_limit(pjob, enforce_job_wide)) {		     /* check my own limits */
 		pjob->ji_nodekill = pjob->ji_nodeid; /* no more POLL's */
 		return 1;
 	}
@@ -7027,7 +7067,7 @@ job_over_limit(job *pjob, int recover)
 
 			units = "kb";
 			total = &total_mem;
-			if (enforce_mem && (limit < total_mem))
+			if (enforce_job_wide && enforce_mem && (limit < total_mem))
 				break;
 		}
 	}

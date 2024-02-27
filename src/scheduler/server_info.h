@@ -348,6 +348,8 @@ int add_resource_str_arr(schd_resource *res, char **str_arr, int allow_dup);
  */
 int add_resource_bool(schd_resource *r1, schd_resource *r2);
 
+int add_resource_atleast(schd_resource *r1, schd_resource *r2);
+
 /*
  *	find_indirect_resource - follow the indirect resource pointers to
  *				 find the real resource at the end

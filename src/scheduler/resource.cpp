@@ -121,6 +121,12 @@ query_resources(int pbs_sd)
 			} else if (!strcmp(attrp->name, ATTR_RESC_FLAG)) {
 				flags = strtol(attrp->value, &endp, 10);
 			}
+
+			if (flags & ATR_DFLAG_ATLEAST) {
+				rtype.is_atleast = 1;
+				rtype.is_consumable = 0;
+				rtype.is_non_consumable = 1;
+			}
 		}
 		tmpres[cur_bs->name] = new resdef(cur_bs->name, flags, rtype);
 	}

@@ -568,7 +568,13 @@ process_request(int sfds)
 	}
 
 	/* is the request from a host acceptable to the server */
-	if (get_sattr_long(SVR_ATR_acl_host_enable)) {
+	if (request->rq_type != PBS_BATCH_Connect &&
+	    (conn->cn_credid == NULL ||
+		    conn->cn_auth_config == NULL ||
+		    conn->cn_auth_config->auth_method == NULL ||
+		    strcmp(conn->cn_auth_config->auth_method, AUTH_GSS_NAME) != 0
+	    ) &&
+	    get_sattr_long(SVR_ATR_acl_host_enable)) {
 		/* acl enabled, check it; always allow myself	*/
 
 		struct pbsnode *isanode = NULL;

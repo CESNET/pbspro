@@ -764,6 +764,9 @@ query_server_dyn_res(server_info *sinfo)
 					   "%s = %s (\"%s\")", dr.command_line.c_str(), res_to_str(res, RF_AVAIL), buf);
 
 			if (pid > 0) {
+				waitpid(pid, NULL, 0);
+				/* In MetaCentrum, we do not need following code. Our tool 'get_license' will not hang.
+				 * The usleep() in this code only makes the scheduler sleep too long.
 				kill(-pid, SIGTERM);
 				if (waitpid(pid, NULL, WNOHANG) == 0) {
 					usleep(250000);
@@ -772,6 +775,7 @@ query_server_dyn_res(server_info *sinfo)
 						waitpid(pid, NULL, 0);
 					}
 				}
+				*/
 			}
 		}
 	}

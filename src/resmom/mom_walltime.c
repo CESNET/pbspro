@@ -188,6 +188,9 @@ recover_walltime(job *pjob)
 		used_walltime = add_resource_entry(resources_used, walltime_def);
 		mark_attr_set(&used_walltime->rs_value);
 		used_walltime->rs_value.at_type = ATR_TYPE_LONG;
-		used_walltime->rs_value.at_val.at_long = (long) ((double) (time_now - pjob->ji_qs.ji_stime) * wallfactor);
 	}
+
+    /* rewrite the used walltime even if its recovered from saved data;
+     * the mom could be down for a long time */
+    used_walltime->rs_value.at_val.at_long = (long)((double)(time_now - pjob->ji_qs.ji_stime) * wallfactor);
 }

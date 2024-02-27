@@ -3783,3 +3783,51 @@ check_for_cycle_interrupt(int do_logging)
 
 #endif /* NAS */
 // clang-format on
+
+/* localmod 030 metacentrum start */
+int do_soft_cycle_interrupt;
+int do_hard_cycle_interrupt;
+int consecutive_interrupted_cycles = 0;
+time_t interrupted_cycle_start_time;
+
+/*
+ *=====================================================================
+ * check_for_cycle_interrupt(do_logging) - Check if a cycle interrupt
+ has been requested.
+ * Entry	do_logging = whether to print to scheduler log
+ * Returns	1 if cycle should be interrupted
+ *		0 if cycle should continue
+ *=====================================================================
+ */
+int
+check_for_cycle_interrupt(int do_logging)
+{
+	if (!do_soft_cycle_interrupt && !do_hard_cycle_interrupt) {
+		return 0;
+	}
+
+	if (!do_hard_cycle_interrupt &&
+	    consecutive_interrupted_cycles >= conf.max_intrptd_cycles) {
+		return 0;
+	}
+
+	if (do_hard_cycle_interrupt ||
+	    time(NULL) >=
+		interrupted_cycle_start_time + conf.min_intrptd_cycle_length) {
+		if (do_logging)
+			log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__,
+				"Short circuit of this cycle");
+
+		return 1;
+	}
+
+	if (do_logging) {
+		sprintf(log_buffer, "Too early to short circuit (%ds elapsed, need %ds)",
+			(int)(time(NULL) - interrupted_cycle_start_time),
+			conf.min_intrptd_cycle_length);
+		log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_SERVER, LOG_DEBUG, __func__, log_buffer);
+	}
+
+	return 0;
+}
+/* localmod 030 metacentrum end */

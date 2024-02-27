@@ -1212,6 +1212,11 @@ struct config
 	int min_intrptd_cycle_length;		/* min length of interrupted cycle */
 	int max_intrptd_cycles;		/* max consecutive interrupted cycles */
 #endif
+	/* localmod 030 metacentrum start */
+	int min_intrptd_cycle_length;		/* min length of interrupted cycle */
+	int max_intrptd_cycles;		/* max consecutive interrupted cycles */
+	/* localmod 030 metacentrum end */
+
 
 	/* selection criteria of nodes for provisioning */
 	enum provision_policy_types provision_policy;

@@ -209,6 +209,10 @@ char *path_undeliv;
 char *path_addconfigs;
 char path_addconfigs_reserved_prefix[] = "PBS";
 
+#define SAFE_STOP
+int mom_safe_stop = 0;
+void safe_stop(int);
+
 char *path_hooks;
 char *path_hooks_workdir;
 char *path_rescdef;
@@ -7740,14 +7744,27 @@ main(int argc, char *argv[])
 			exit(1);
 		}
 
-		if (fork() > 0)
+		if (fork() > 0) {
+			sigset_t waitset;
+			int sigfromchild;
+			sigemptyset(&waitset);
+			sigaddset(&waitset, SIGUSR1);
+			sigprocmask(SIG_BLOCK, &waitset, NULL);
+
+			/* wait for child to write the pid file */
+			sigwait(&waitset, &sigfromchild);
 			return (0); /* parent goes away */
+		}
 
 		if ((setsid() == -1) && (errno != ENOSYS)) {
+			kill(getppid(), SIGUSR1); // tell parent to exit
+
 			log_err(errno, msg_daemonname, "setsid failed");
 			return (2);
 		}
 		if (lock_file(lockfds, F_WRLCK, "mom.lock", 1, NULL, 0)) { /* lock out other MOMs */
+			kill(getppid(), SIGUSR1); // tell parent to exit
+
 			log_errf(errno, msg_daemonname, "pbs_mom: another mom running");
 			fprintf(stderr, "%s\n", "pbs_mom: another mom running");
 			exit(1);
@@ -7786,6 +7803,11 @@ main(int argc, char *argv[])
 	}
 #endif /* _POSIX_MEMLOCK */
 
+#ifndef	DEBUG
+	if (stalone != 1)
+		kill(getppid(), SIGUSR1); // tell parent pid is written
+#endif	/* DEBUG */
+
 	sigemptyset(&allsigs);
 	sigaddset(&allsigs, SIGHUP);  /* remember to block these */
 	sigaddset(&allsigs, SIGINT);  /* during critical sections */
@@ -7819,6 +7841,9 @@ main(int argc, char *argv[])
 	act.sa_handler = toolong; /* handle an alarm call */
 	sigaction(SIGALRM, &act, NULL);
 
+	act.sa_handler = safe_stop;	/* shutdown only if no multinode jobs */
+	sigaction(SIGUSR1, &act, NULL);
+
 	act.sa_handler = stop_me; /* shutdown for these */
 	sigaction(SIGINT, &act, NULL);
 	sigaction(SIGTERM, &act, NULL);
@@ -7840,7 +7865,7 @@ main(int argc, char *argv[])
 	 **	that is exec'ed will not have SIG_IGN set for anything.
 	 */
 	sigaction(SIGPIPE, &act, NULL);
-	sigaction(SIGUSR1, &act, NULL);
+	/* sigaction(SIGUSR1, &act, NULL); */
 #ifdef SIGINFO
 	sigaction(SIGINFO, &act, NULL);
 #endif
@@ -8361,6 +8386,9 @@ main(int argc, char *argv[])
 			process_hup();
 			internal_state_update = UPDATE_MOM_STATE;
 		}
+
+		if (mom_safe_stop)
+			safe_stop(SIGUSR1);
 #endif
 
 		time_now = time(NULL);
@@ -8776,6 +8804,22 @@ main(int argc, char *argv[])
 						  PBS_EVENTCLASS_JOB, LOG_INFO,
 						  pjob->ji_qs.ji_jobid, log_buffer);
 
+					kill_msg = malloc(80 + strlen(log_buffer) + \
+							strlen(pjob->ji_qs.ji_jobid) + \
+							strlen(pjob->ji_wattr[(int)JOB_ATR_job_owner].at_val.at_str) + \
+							strlen(mom_host) + \
+							strlen(pjob->ji_wattr[(int)JOB_ATR_jobname].at_val.at_str));
+					if (kill_msg != NULL) {
+						sprintf(kill_msg, "%s %s %s %s name: %s",
+							pjob->ji_qs.ji_jobid,
+							pjob->ji_wattr[(int)JOB_ATR_job_owner].at_val.at_str,
+							mom_host,
+							log_buffer,
+							pjob->ji_wattr[(int)JOB_ATR_jobname].at_val.at_str);
+						log_err(0, "RESOURCE_KILL", kill_msg);
+						free(kill_msg);
+					}
+
 					kill_msg = malloc(80 + strlen(log_buffer));
 					if (kill_msg != NULL) {
 						sprintf(kill_msg, "=>> PBS: job killed: %s\n", log_buffer);
@@ -8820,7 +8864,7 @@ main(int argc, char *argv[])
 
 	/* if kill_jobs_on_exit set, kill any running/suspended jobs */
 
-	if (kill_jobs_on_exit) {
+	if (kill_jobs_on_exit && recover != 2) {
 		pjob = (job *) GET_NEXT(svr_alljobs);
 		while (pjob) {
 			if (check_job_substate(pjob, JOB_SUBSTATE_RUNNING) || check_job_substate(pjob, JOB_SUBSTATE_SUSPEND) || check_job_substate(pjob, JOB_SUBSTATE_SCHSUSP))
@@ -8829,6 +8873,14 @@ main(int argc, char *argv[])
 				term_job(pjob);
 
 			pjob = (job *) GET_NEXT(pjob->ji_alljobs);
+		}
+	} else {
+		/* save running jobs on exit */
+		pjob = (job *)GET_NEXT(svr_alljobs);
+		while (pjob) {
+			if (check_job_substate(pjob, JOB_SUBSTATE_RUNNING))
+				job_save(pjob);
+			pjob = (job *)GET_NEXT(pjob->ji_alljobs);
 		}
 	}
 
@@ -9197,6 +9249,47 @@ void
 #else /* WIN32 */
 
 #endif /* WIN32 */
+
+/**
+ * @brief
+ *	signal handler for SIGUSR1
+ *	quit only if no multinode jobs on node
+ *	do not kill jobs on exit
+ *
+ * @param[in] sig - signal number
+ *
+ * @return 	Void
+ *
+ */
+
+void
+safe_stop(int sig)
+{
+        switch (sig) {
+		case SIGUSR1:
+			mom_run_state = 0;
+			mom_safe_stop = 1;
+			job *pjob;
+			for (pjob = (job *)GET_NEXT(svr_alljobs);
+				pjob;
+				pjob = (job *)GET_NEXT(pjob->ji_alljobs)) {
+				if (check_job_state(pjob, JOB_STATE_LTR_RUNNING)) {
+					if (pjob->ji_numnodes > 1) {
+						mom_run_state = 1;
+					}
+				}
+
+				if (check_job_state(pjob, JOB_STATE_LTR_RUNNING) == 0) {
+					mom_run_state = 1;
+				}
+			}
+			return;
+		default:
+			break;
+	}
+
+
+}
 
 /* the following is used in support of the getkbdtime() function */
 

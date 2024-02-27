@@ -151,6 +151,9 @@ schedinit(int nthreads)
 
 	parse_ded_file(DEDTIME_FILE);
 
+	add_fairshare_tree(NULL);
+
+#if 0
 	if (fstree != NULL)
 		delete fstree;
 	/* preload the static members to the fairshare tree */
@@ -163,6 +166,8 @@ schedinit(int nthreads)
 		if (fstree->last_decay == 0)
 			fstree->last_decay = cstat.current_time;
 	}
+#endif
+
 #ifdef NAS /* localmod 034 */
 	site_parse_shares(SHARE_FILE);
 #endif /* localmod 034 */
@@ -321,22 +326,36 @@ init_scheduling_cycle(status *policy, int pbs_sd, server_info *sinfo)
 	group_info *user = NULL; /* the user for the running jobs of the last cycle */
 	static schd_error *err;
 
+	class fairshare_head *fstree;
+	struct fairshare_trees *fairshares;
+	char filename[MAXPATHLEN + 1] = "";
+
 	if (err == NULL) {
 		err = new_schd_error();
 		if (err == NULL)
 			return 0;
 	}
 
-	if ((policy->fair_share || sinfo->job_sort_formula != NULL) && sinfo->fstree != NULL) {
+	if ((policy->fair_share || sinfo->job_sort_formula != NULL) && sinfo->fstrees != NULL) {
 		FILE *fp;
 		bool decayed = false;
 		bool resort = false;
 		if ((fp = fopen(USAGE_TOUCH, "r")) != NULL) {
 			fclose(fp);
-			reset_usage(fstree->root);
-			read_usage(USAGE_FILE, NO_FLAGS, fstree);
-			if (fstree->last_decay == 0)
-				fstree->last_decay = policy->current_time;
+			fairshares = fstrees;
+			while (fairshares != NULL) {
+				if (fairshares->name == NULL)
+					snprintf(filename, sizeof(filename), "%s", USAGE_FILE);
+				else
+					snprintf(filename, sizeof(filename), "%s.%s", USAGE_FILE, fairshares->name);
+
+				reset_usage(fairshares->fstree->root);
+				read_usage(filename, NO_FLAGS, fairshares->fstree);
+				if (fairshares->fstree->last_decay == 0)
+					fairshares->fstree->last_decay = policy->current_time;
+
+				fairshares = fairshares->next;
+			}
 			remove(USAGE_TOUCH);
 			resort = true;
 		}
@@ -346,7 +365,20 @@ init_scheduling_cycle(status *policy, int pbs_sd, server_info *sinfo)
 			 */
 
 			for (const auto &lj : last_running) {
-				user = find_alloc_ginfo(lj.entity_name, sinfo->fstree->root);
+				int j;
+
+				if (sinfo->running_jobs != NULL)
+					for (j = 0; sinfo->running_jobs[j] != NULL &&
+						lj.name != sinfo->running_jobs[j]->name; j++)
+						;
+
+				if (sinfo->running_jobs[j] == NULL)
+					continue;
+
+				fstree = get_fairshare_tree(sinfo->running_jobs[j]->job->queue->fairshare_tree, sinfo->fstrees);
+
+
+				user = find_alloc_ginfo(lj.entity_name, fstree->root);
 
 				if (user != NULL) {
 					auto rj = find_resource_resv(sinfo->running_jobs, lj.name);
@@ -372,14 +404,15 @@ init_scheduling_cycle(status *policy, int pbs_sd, server_info *sinfo)
 		 * scheduling cycle.  For that matter, several half lives could have
 		 * passed.  If this is the case, perform as many decays as necessary
 		 */
-
+    fairshares = sinfo->fstrees;
+    while (fairshares != NULL) {
 		auto t = policy->current_time;
 		while (conf.decay_time != SCHD_INFINITY &&
-		       (t - sinfo->fstree->last_decay) > conf.decay_time) {
+		       (t - fairshares->fstree->last_decay) > conf.decay_time) {
 			log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_SERVER, LOG_DEBUG,
 				  "Fairshare", "Decaying Fairshare Tree");
-			if (fstree != NULL)
-				decay_fairshare_tree(sinfo->fstree->root);
+			if (fairshares->fstree != NULL)
+				decay_fairshare_tree(fairshares->fstree->root);
 			t -= conf.decay_time;
 			decayed = true;
 			resort = true;
@@ -388,21 +421,30 @@ init_scheduling_cycle(status *policy, int pbs_sd, server_info *sinfo)
 		if (decayed) {
 			/* set the time to the actual time the half-life should have occurred */
 			if (fstree != NULL)
-				fstree->last_decay =
+				fairshares->fstree->last_decay =
 					policy->current_time - (policy->current_time -
-								sinfo->fstree->last_decay) %
+								fairshares->fstree->last_decay) %
 								       conf.decay_time;
 		}
 
 		if (decayed || !last_running.empty()) {
-			write_usage(USAGE_FILE, sinfo->fstree);
+			if (fairshares->name == NULL)
+				snprintf(filename, sizeof(filename), "%s", USAGE_FILE);
+			else
+				snprintf(filename, sizeof(filename), "%s.%s", USAGE_FILE, fairshares->name);
+
+			write_usage(filename, fairshares->fstree);
+
 			log_event(PBSEVENT_DEBUG2, PBS_EVENTCLASS_SERVER, LOG_DEBUG,
 				  "Fairshare", "Usage Sync");
 		}
-		reset_temp_usage(sinfo->fstree->root);
-		calc_usage_factor(sinfo->fstree);
+		reset_temp_usage(fairshares->fstree->root);
+		calc_usage_factor(fairshares->fstree);
 		if (resort)
 			sort_jobs(policy, sinfo);
+
+		fairshares = fairshares->next;
+	}
 	}
 
 	/* set all the jobs' preempt priorities.  It is done here instead of when
@@ -1124,7 +1166,7 @@ end_cycle_tasks(server_info *sinfo)
 	 * we don't want to free it now, or we'd lose all fairshare data
 	 */
 	if (sinfo != NULL) {
-		sinfo->fstree = NULL;
+		sinfo->fstrees = NULL;
 		delete sinfo; /* free server and queues and jobs */
 	}
 

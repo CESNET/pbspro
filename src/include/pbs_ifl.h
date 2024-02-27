@@ -258,6 +258,7 @@ extern "C" {
 /* localmod 034 */
 #define ATTR_maxborrow "max_borrow"
 #endif
+#define ATTR_fairshare_tree "fairshare_tree"
 
 /* additional server attributes names */
 

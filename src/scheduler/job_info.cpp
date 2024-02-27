@@ -858,6 +858,8 @@ query_job(int pbs_sd, struct batch_status *job, server_info *sinfo, queue_info *
 	char *endp;		/* used for strtol() */
 	resource_req *resreq;	/* resource_req list for resources requested  */
 
+	class fairshare_head *fstree;
+
 	if ((resresv = new resource_resv(job->name)) == NULL)
 		return NULL;
 
@@ -882,7 +884,7 @@ query_job(int pbs_sd, struct batch_status *job, server_info *sinfo, queue_info *
 	while (attrp != NULL && !resresv->is_invalid) {
 		clear_schd_error(err);
 		if (conf.fairshare_ent == attrp->name) {
-			if (sinfo->fstree != NULL) {
+			if (sinfo->fstrees != NULL) {
 #ifdef NAS /* localmod 059 */
 				/* This is a hack to allow -A specification for testing, but
 				 * ignore most incorrect user -A values
@@ -896,7 +898,8 @@ query_job(int pbs_sd, struct batch_status *job, server_info *sinfo, queue_info *
 					resresv->job->sh_info = site_find_alloc_share(sinfo, attrp->value);
 				}
 #else
-				resresv->job->ginfo = find_alloc_ginfo(attrp->value, sinfo->fstree->root);
+				fstree = get_fairshare_tree(qinfo->fairshare_tree, resresv->server->fstrees);
+				resresv->job->ginfo = find_alloc_ginfo(attrp->value, fstree->root);
 #endif /* localmod 059 */
 			} else
 				resresv->job->ginfo = NULL;
@@ -1178,9 +1181,14 @@ query_job(int pbs_sd, struct batch_status *job, server_info *sinfo, queue_info *
 	 * if it's 'queue' and if so, set the group info to the queue name
 	 */
 	if (conf.fairshare_ent == "queue") {
-		if (sinfo->fstree != NULL) {
-			resresv->job->ginfo =
-				find_alloc_ginfo(qinfo->name, sinfo->fstree->root);
+		if (sinfo->fstrees != NULL) {
+			fstree = get_fairshare_tree(qinfo->fairshare_tree, sinfo->fstrees);
+
+			if (fstree != NULL) {
+				resresv->job->ginfo =
+					find_alloc_ginfo(qinfo->name, fstree->root);
+			} else 
+				resresv->job->ginfo = NULL;
 		} else
 			resresv->job->ginfo = NULL;
 	}
@@ -1197,8 +1205,13 @@ query_job(int pbs_sd, struct batch_status *job, server_info *sinfo, queue_info *
 #else
 		sprintf(fairshare_name, "%s:%s", resresv->group.c_str(), resresv->user.c_str());
 #endif /* localmod 058 */
-		if (resresv->server->fstree != NULL) {
-			resresv->job->ginfo = find_alloc_ginfo(fairshare_name, sinfo->fstree->root);
+		if (resresv->server->fstrees != NULL) {
+			class fairshare_head *fstree;
+			fstree = get_fairshare_tree(resresv->job->queue->fairshare_tree, resresv->server->fstrees);
+			if (fstree != NULL) {
+				resresv->job->ginfo = find_alloc_ginfo(fairshare_name, fstree->root);
+			} else
+				resresv->job->ginfo = NULL;
 		} else
 			resresv->job->ginfo = NULL;
 	}
@@ -2517,6 +2530,8 @@ dup_job_info(job_info *ojinfo, queue_info *nqinfo, server_info *nsinfo)
 {
 	job_info *njinfo;
 
+	class fairshare_head *fstree;
+
 	if ((njinfo = new_job_info()) == NULL)
 		return NULL;
 
@@ -2573,9 +2588,13 @@ dup_job_info(job_info *ojinfo, queue_info *nqinfo, server_info *nsinfo)
 	njinfo->resreleased = dup_nspecs(ojinfo->resreleased, nsinfo->nodes, NULL);
 	njinfo->resreq_rel = dup_resource_req_list(ojinfo->resreq_rel);
 
-	if (nqinfo->server->fstree != NULL) {
-		njinfo->ginfo = find_group_info(ojinfo->ginfo->name,
-						nqinfo->server->fstree->root);
+	if (nqinfo->server->fstrees != NULL) {
+		fstree = get_fairshare_tree(ojinfo->queue->fairshare_tree, nqinfo->server->fstrees);
+		if (fstree != NULL) {
+			njinfo->ginfo = find_group_info(ojinfo->ginfo->name,
+						fstree->root);
+		} else
+			njinfo->ginfo = NULL;
 	} else
 		njinfo->ginfo = NULL;
 

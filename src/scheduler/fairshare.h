@@ -204,4 +204,10 @@ void reset_usage(group_info *node);
 /* Calculate the arbitrary usage of the tree */
 void calc_usage_factor(fairshare_head *tree);
 
+fairshare_head *get_fairshare_tree(char *name, fairshare_trees *fairshares);
+void free_fairshares(fairshare_trees *fairshares);
+fairshare_trees * new_fairshares(char *name);
+fairshare_trees *dup_fairshares(fairshare_trees *ofairshares);
+void add_fairshare_tree(char *name);
+
 #endif /* _FAIRSHARE_H */

@@ -126,6 +126,6 @@ extern std::vector<prev_job_info> last_running;
  */
 extern char *cmp_aoename;
 
-extern fairshare_head *fstree;
+extern fairshare_trees *fstrees;
 
 #endif /* _GLOBALS_H */

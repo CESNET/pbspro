@@ -154,6 +154,7 @@ EXPORTED_TYPES_DICT = {
     'event'              : _event,
     'pbs_iter'	    : pbs_iter,
     'state'   	    : pbs_types.vnode_state,
+    'state_aux'   	    : pbs_types.vnode_state,
     'sharing'   	    : pbs_types.vnode_sharing,
     'ntype'   	    : pbs_types.vnode_ntype,
     'pbs_entity'   	    : str,

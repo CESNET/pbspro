@@ -2254,6 +2254,100 @@ compare_res_to_str(schd_resource *res, char *str, enum resval_cmpflag cmpflag)
 	return neg;
 }
 
+int
+gpu_cap_from_avail_cap(char *strcap)
+{
+	int is_cap_str = 0;
+	int len = strlen("sm_");
+
+	if (strncmp(strcap, "sm_", len) == 0)
+		is_cap_str = len;
+
+	try {
+		return std::stoi(strcap + is_cap_str);
+	} catch (std::exception &e) {
+		return 0;
+	}
+}
+
+int
+compare_res_gpu_cap_compute(int cuda_avail, int cuda_req)
+{
+	return cuda_avail >= cuda_req;
+}
+
+int
+compare_res_gpu_cap_sm(int cuda_avail, int cuda_req)
+{
+	if (cuda_avail / 10 != cuda_req / 10)
+		return 0;
+
+	if (cuda_avail % 10 >= cuda_req % 10)
+		return 1;
+
+	return 0;
+}
+
+int
+compare_res_gpu_cap(schd_resource *res, char *req_str)
+{
+	char *rest;
+	char *req_token;
+	char *token_cap;
+	int underscore;
+
+	int ret = 0;
+	int cap_avail = 0;
+	int cap_req = 0;
+	char *req = strdup(req_str);
+
+	for (int i = 0; res->str_avail[i] != NULL; i++) {
+		if (res->str_avail[i][0] == '^')
+			continue;
+
+		cap_avail = gpu_cap_from_avail_cap(res->str_avail[i]);
+
+		rest = req;
+		while ((req_token = strtok_r(rest, ",", &rest))) {
+			token_cap = strchr(req_token, '_');
+			if (token_cap == NULL)
+				continue;
+			underscore = ++token_cap - req_token;
+
+			try {
+				cap_req = std::stoi(token_cap);
+			} catch (std::exception &e) {
+				continue;
+			}
+
+			if(strncmp(req_token, "compute_", underscore) == 0) {
+				ret = compare_res_gpu_cap_compute(cap_avail, cap_req);
+				if (ret) {
+					free(req);
+					return ret;
+				}
+
+			} else if(strncmp(req_token, "code_", underscore) == 0) {
+				ret = compare_res_gpu_cap_sm(cap_avail, cap_req);
+				if (ret) {
+					free(req);
+					return ret;
+				}
+
+			} else if(strncmp(req_token, "sm_", underscore) == 0) {
+				ret = compare_res_gpu_cap_sm(cap_avail, cap_req);
+				if (ret) {
+					free(req);
+					return ret;
+				}
+			}
+		}
+	}
+
+	free(req);
+	return ret;
+}
+
 /**
  * @brief
  *		compare_non_consumable - perform the == operation on a non consumable
@@ -2321,6 +2415,8 @@ compare_non_consumable(schd_resource *res, resource_req *req)
 	}
 
 	if (req->type.is_string && res != NULL) {
+		if (!strcmp(res->name, "gpu_cap"))
+			return compare_res_gpu_cap(res, req->res_str);
 		/* 'host' to follow IETF rules; 'host' is case insensitive  */
 		if (!strcmp(res->name, "host"))
 			return compare_res_to_str(res, req->res_str, CMP_CASELESS);

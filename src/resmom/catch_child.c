@@ -1092,6 +1092,7 @@ update_ajob_status_using_cmd(job *pjob, int cmd, int use_rtn_list_ext)
 		}
 	}
 
+	update_walltime(pjob);
 
 	/* if cmd is IS_RESCUSED_FROM_HOOK, send resources_used info
 	 * to the server if coming from mother superior of job.

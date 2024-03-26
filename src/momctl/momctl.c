@@ -655,6 +655,18 @@ int do_mom(
         return(EXIT_FAILURE);
         }
 
+      if (strlen(Value) == 0)
+        {
+        /* FAILURE */
+
+        fprintf(stderr,"ERROR:    job clear failed on %s\n",
+          HPtr);
+
+        closerm(sd);
+
+        return(EXIT_FAILURE);
+        }
+
       /* job cleared */
 
       fprintf(stdout,"job clear request successful on %s\n",

@@ -735,9 +735,25 @@ depend_on_term(job *pjob)
 				op = JOB_DEPEND_OP_RELEASE;
 				break;
 
+			/* This case can only happen when a job with before start
+			 * dependency is getting deleted before it even runs.
+			 */
+			case JOB_DEPEND_TYPE_BEFORESTART:
+				op = JOB_DEPEND_OP_DELETE;
+				break;
 		}
 
 		if (op != -1) {
+			/* Check if the job is being deleted. If so, delete the dependency chain */
+			if (pjob->ji_terminated == 1)
+				op = JOB_DEPEND_OP_DELETE;
+			/* This function is also called from job_abt when the job is in held state and abort substate.
+			 * In case of a held job, release the dependency chain.
+			 */
+			if (pjob->ji_qs.ji_state == JOB_STATE_HELD && pjob->ji_qs.ji_substate == JOB_SUBSTATE_ABORT) {
+				op = JOB_DEPEND_OP_DELETE;
+			}
+
 			pparent = (struct depend_job *)GET_NEXT(pdep->dp_jobs);
 			while (pparent) {
 

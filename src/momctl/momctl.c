@@ -737,6 +737,9 @@ int do_mom(
           *ptr = '=';
           }
         }  /* END for (rindex) */
+
+        closerm(sd);
+
         return (was_error);
       }    /* END BLOCK (case momQuery) */
 

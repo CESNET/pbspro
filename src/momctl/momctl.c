@@ -35,7 +35,7 @@ int log_mask;
 
 char *LocalHost = "localhost";
 char *DiagPtr	= "diag";
-char *killed_ptr = "killed";
+char *killmsg_ptr = "killmsg";
 
 char *Query[MAX_QUERY];
 int	 QueryI	 = 0;
@@ -226,7 +226,7 @@ main(int ArgC, char **ArgV)
 
 			case 'k':
 				/* kill msg */
-				/* FORMAT:	momctl -k <reason>:<PID|JOBID> */
+				/* FORMAT:	momctl -k <PID|JOBID>:<msg> */
 				CmdIndex = momQuery;
 
 				if ((Query[QueryI] = calloc(MAX_KILLED_LEN, sizeof(char))) == NULL) {
@@ -237,21 +237,22 @@ main(int ArgC, char **ArgV)
 				if (optarg == NULL)
 					exit(EXIT_FAILURE);
 
-				snprintf(Query[QueryI], MAX_KILLED_LEN, "%s=%s", killed_ptr, optarg);
-				if (!strchr(optarg, ':')) {
-					fprintf(stderr, "ERROR: invalid format: '%s', requested format: '<PID|JOBID>:<reason>'\n", optarg);
+				snprintf(Query[QueryI], MAX_KILLED_LEN, "%s=%s", killmsg_ptr, optarg);
+
+				char *ptr = strchr(Query[QueryI], '=') + 1;
+				if (*ptr == '\0') {
+					fprintf(stderr, "ERROR: invalid format: '%s', requested format: '<PID|JOBID>:<msg>'\n", optarg);
 					exit(EXIT_FAILURE);
 				}
 
-				char *ptr = strchr(Query[QueryI], '=') + 1;
-				if (ptr == NULL) {
-					fprintf(stderr, "ERROR: invalid format: '%s', requested format: '<PID|JOBID>:<reason>'\n", optarg);
+				if (!strchr(ptr, ':')) {
+					fprintf(stderr, "ERROR: invalid format: '%s', requested format: '<PID|JOBID>:<msg>'\n", optarg);
 					exit(EXIT_FAILURE);
 				}
 
 				ptr = strchr(ptr, ':') + 1;
-				if (ptr == NULL) {
-					fprintf(stderr, "ERROR: invalid format: '%s', requested format: '<PID|JOBID>:<reason>'\n", optarg);
+				if (*ptr == '\0') {
+					fprintf(stderr, "ERROR: invalid format: '%s', requested format: '<PID|JOBID>:<msg>'\n", optarg);
 					exit(EXIT_FAILURE);
 				}
 

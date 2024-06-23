@@ -4808,23 +4808,7 @@ bad_restrict(u_long ipadd)
 extern proc_stat_t *proc_info;
 extern int nproc;
 
-static int
-injob(job *pjob, pid_t sid)
-{
-	task *ptask;
-
-	for (ptask = (task *) GET_NEXT(pjob->ji_tasks);
-	     ptask;
-	     ptask = (task *) GET_NEXT(ptask->ti_jobtask)) {
-		if (ptask->ti_qs.ti_sid <= 1)
-			continue;
-		if (ptask->ti_qs.ti_sid == sid)
-			return TRUE;
-	}
-	return FALSE;
-}
-
- const char *PJobSubState[] = {
+const char *PJobSubState[] = {
 	"TRANSIN",                /* Transit in, wait for commit */
 	"TRANSICM",               /* Transit in, wait for commit */
 	"TRNOUT",                 /* transiting job outbound */
@@ -4983,6 +4967,63 @@ injob(job *pjob, pid_t sid)
 	"SUBSTATE155",
 	NULL
 };
+
+static int
+injob(job *pjob, pid_t sid)
+{
+	task *ptask;
+
+	for (ptask = (task *) GET_NEXT(pjob->ji_tasks);
+	     ptask;
+	     ptask = (task *) GET_NEXT(ptask->ti_jobtask)) {
+		if (ptask->ti_qs.ti_sid <= 1)
+			continue;
+		if (ptask->ti_qs.ti_sid == sid)
+			return TRUE;
+	}
+	return FALSE;
+}
+
+static void
+job_update_comment(struct work_task *ptask)
+{
+	int connect;
+	char job_id_out[PBS_MAXCLTJOBID];
+	char server_out[PBS_MAXSERVERNAME + PBS_MAXPORTNUM + 2];
+	struct attrl *attrib = NULL;
+	char *jobid = (char *) ptask->wt_parm1;
+	char *comment = (char *) ptask->wt_parm2;
+
+	if (jobid == NULL) {
+		log_err(-1, __func__, "bad jobid parameter");
+		return;
+	}
+
+	if (comment == NULL) {
+		log_err(-1, __func__, "bad comment parameter");
+		return;
+	}
+
+	if (get_server(jobid, job_id_out, server_out)) {
+		log_err(-1, __func__, "get_server failed");
+		free(jobid);
+		free(comment);
+		return;
+	}
+
+	connect = cnt2server(server_out);
+
+	set_attr(&attrib, ATTR_comment, comment);
+	if (connect <= 0 || pbs_alterjob(connect, job_id_out, attrib, NULL)) {
+		log_err(-1, __func__, "failed to alter job comment");
+	}
+	free_attrl(attrib);
+	free(jobid);
+	free(comment);
+	if (connect > 0) {
+		pbs_disconnect(connect);
+	}
+}
 
 static char *
 getjoblist()
@@ -5311,8 +5352,8 @@ rm_request(int iochan, int version, int prot)
 						tmpLine = getjoblist();
 						MUStrNCat(&BPtr, &BSpace, "jobs=");
 						MUStrNCat(&BPtr, &BSpace, tmpLine);
-					} else if (!strncasecmp(name, "killed", strlen("killed"))) {
-						char *reason = NULL;
+					} else if (!strncasecmp(name, "killmsg", strlen("killmsg"))) {
+						char *msg = NULL;
 						int pid;
 						char *by;
 						char *pos;
@@ -5325,12 +5366,12 @@ rm_request(int iochan, int version, int prot)
 
 						curr++; /* +1 for '=' */
 
-						reason = strchr(curr, ':');
+						msg = strchr(curr, ':');
 
-						by = strndup(curr, reason - curr);
+						by = strndup(curr, msg - curr);
 
-						reason++; /* +1 for ':' */
-						if (reason == NULL || *reason == '\0')
+						msg++; /* +1 for ':' */
+						if (msg == NULL || *msg == '\0')
 							goto bad;
 
 						pos = by;
@@ -5383,40 +5424,51 @@ rm_request(int iochan, int version, int prot)
 
 								if (kill_found) {
 									char *kill_msg;
+									char *pos;
+									struct work_task *ptask;
 
-									sprintf(log_buffer, "%s - exceeded limit -", reason);
+									sprintf(log_buffer, "%s - exceeded limit -", msg);
 
-									if (pjob) {
-										c = pjob->ji_qs.ji_svrflags;
-										kill_msg = malloc(25 + strlen(log_buffer));
-										if (kill_msg != NULL ) {
-											sprintf(kill_msg, "=>> PBS: process killed: %s\n", log_buffer);
-											if (c & JOB_SVFLG_HERE) {
-												message_job(pjob, StdErr, kill_msg);
+									c = pjob->ji_qs.ji_svrflags;
+									kill_msg = malloc(25 + strlen(log_buffer));
+									if (kill_msg == NULL) {
+										log_err(errno, __func__, "malloc");
+										MUStrNCat(&BPtr, &BSpace, "internal error");
+										break;
+									}
+
+									sprintf(kill_msg, "=>> PBS: process killed: %s\n", log_buffer);
+									if (c & JOB_SVFLG_HERE) {
+										message_job(pjob, StdErr, kill_msg);
+									} else {
+										/* Multi-mom scenario - adding a connection to demux for reporting error */
+
+										struct sockaddr_in *ap;
+										/* We always have a stream open to MS at node 0 */
+										i = pjob->ji_hosts[0].hn_stream;
+										if ((ap = tpp_getaddr(i)) == NULL) {
+											log_joberr(-1, "over_limit_message", "cannot write to job stderr because there is no stream to MS", pjob->ji_qs.ji_jobid);
+										} else {
+											ipaddr = ap->sin_addr.s_addr;
+											if ((fd = open_demux(ipaddr, pjob->ji_stderr)) == -1) {
+												(void)sprintf(log_buffer, "over_limit_message: cannot write to job stderr because open_demux failed");
+												log_event(PBSEVENT_JOB | PBSEVENT_FORCE, PBS_EVENTCLASS_JOB, LOG_INFO, pjob->ji_qs.ji_jobid, log_buffer);
 											} else {
-												/* Multi-mom scenario - adding a connection to demux for reporting error */
-
-												struct sockaddr_in *ap;
-												/* We always have a stream open to MS at node 0 */
-												i = pjob->ji_hosts[0].hn_stream;
-												if ((ap = tpp_getaddr(i)) == NULL) {
-													log_joberr(-1, "over_limit_message", "cannot write to job stderr because there is no stream to MS", pjob->ji_qs.ji_jobid);
-												} else {
-													ipaddr = ap->sin_addr.s_addr;
-													if ((fd = open_demux(ipaddr, pjob->ji_stderr)) == -1) {
-														(void)sprintf(log_buffer, "over_limit_message: cannot write to job stderr because open_demux failed");
-														log_event(PBSEVENT_JOB | PBSEVENT_FORCE, PBS_EVENTCLASS_JOB, LOG_INFO, pjob->ji_qs.ji_jobid, log_buffer);
-													} else {
-														(void)write(fd, pjob->ji_wattr[(int)JOB_ATR_Cookie].at_val.at_str,
-														strlen(pjob->ji_wattr[(int)JOB_ATR_Cookie].at_val.at_str));
-														(void)write(fd, kill_msg, strlen(kill_msg));
-														(void)close(fd);
-													}
-												}
+												(void)write(fd, pjob->ji_wattr[(int)JOB_ATR_Cookie].at_val.at_str,
+												strlen(pjob->ji_wattr[(int)JOB_ATR_Cookie].at_val.at_str));
+												(void)write(fd, kill_msg, strlen(kill_msg));
+												(void)close(fd);
 											}
-											free(kill_msg);
 										}
 									}
+
+									pos = strchr(kill_msg, '\n');
+									*pos = '\0';
+
+									ptask = set_task(WORK_Immed, 0, job_update_comment, strdup(pjob->ji_qs.ji_jobid));
+									ptask->wt_parm2 = strdup(kill_msg + 4); /* +4 for '=>> ' */
+
+									free(kill_msg);
 
 									kill_msg = malloc(80 + strlen(log_buffer) + \
 										strlen(pjob->ji_qs.ji_jobid) + \
